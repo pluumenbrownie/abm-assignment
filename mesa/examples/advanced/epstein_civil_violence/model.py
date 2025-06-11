@@ -1,5 +1,5 @@
 import mesa
-from mesa.examples.advanced.epstein_civil_violence.agents import (
+from agents import (
     Citizen,
     CitizenState,
     Cop,
@@ -48,10 +48,20 @@ class EpsteinCivilViolence(mesa.Model):
         movement=True,
         max_iters=1000,
         seed=None,
+        rebel_reduction=0.1,
+        rebel_increase=1.0,
+        lamb=1.0
     ):
         super().__init__(seed=seed)
         self.movement = movement
         self.max_iters = max_iters
+        self.rebel_reduction = rebel_reduction
+        self.rebel_increase = rebel_increase
+        self.layer = mesa.discrete_space.PropertyLayer(
+            name="rebellion",
+            dimensions=(width, height),
+            default_value=1.0,
+        )
 
         self.grid = mesa.discrete_space.OrthogonalVonNeumannGrid(
             (width, height), capacity=1, torus=True, random=self.random
@@ -79,7 +89,7 @@ class EpsteinCivilViolence(mesa.Model):
             )[0]
 
             if klass == Cop:
-                cop = Cop(self, vision=cop_vision, max_jail_term=max_jail_term)
+                cop = Cop(self, vision=cop_vision, max_jail_term=max_jail_term, lamb=lamb)
                 cop.move_to(cell)
             elif klass == Citizen:
                 citizen = Citizen(
@@ -88,6 +98,7 @@ class EpsteinCivilViolence(mesa.Model):
                     threshold=active_threshold,
                     vision=citizen_vision,
                     arrest_prob_constant=arrest_prob_constant,
+                    lamb=lamb,
                 )
                 citizen.move_to(cell)
 
@@ -99,7 +110,14 @@ class EpsteinCivilViolence(mesa.Model):
         """
         Advance the model by one step and collect data.
         """
-        self.agents.shuffle_do("step")
+        # We reduce the rebel rate of all cells by a factor rebel_reduction.
+        self.layer.data = list(map(lambda x: self.rebel_reduction*x, self.layer.data))
+        for agent in self.agents_by_type[Citizen]:
+            if agent.state == CitizenState.ACTIVE:
+                # For each cell with an active citizen, we increase the rebel rate by rebel_increase.
+                self.layer.data[agent.cell.coordinate[0]][agent.cell.coordinate[1]] += self.rebel_increase
+
+        self.agents.shuffle_do("step", rebel_layer=self.layer)
         self._update_counts()
         self.datacollector.collect(self)
 

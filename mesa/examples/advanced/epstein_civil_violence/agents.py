@@ -2,7 +2,7 @@ import math
 from enum import Enum
 
 import mesa
-
+import numpy as np
 
 class CitizenState(Enum):
     ACTIVE = 1
@@ -11,6 +11,21 @@ class CitizenState(Enum):
 
 
 class EpsteinAgent(mesa.discrete_space.CellAgent):
+    """
+    Attributes:
+        model: model instance
+        lamb: (λ) the hyperparameter for the logit model.
+    """
+    def __init__(self, model, lamb):
+        """
+        Create a new EpsteinAgent.
+        Args:
+            model: the model to which the agent belongs
+            lamb: (λ) the hyperparameter for the logit model.
+        """
+        super().__init__(model)
+        self.lamb = lamb
+
     def update_neighbors(self):
         """
         Look around and see who my neighbors are
@@ -19,9 +34,32 @@ class EpsteinAgent(mesa.discrete_space.CellAgent):
         self.neighbors = self.neighborhood.agents
         self.empty_neighbors = [c for c in self.neighborhood if c.is_empty]
 
-    def move(self):
+    def move(self, rebel_layer: mesa.discrete_space.PropertyLayer, high: bool = False):
         if self.model.movement and self.empty_neighbors:
-            new_pos = self.random.choice(self.empty_neighbors)
+            # include logit model for movement
+            rebel_rate = []
+            for neighbor in self.empty_neighbors:
+                # We calculate e(λ * rebel_rate) for each empty neighbor
+                rebel_rate.append(math.exp(self.lamb * (rebel_layer.data[neighbor.coordinate[0]][neighbor.coordinate[1]])))
+            m = max(rebel_rate)
+            if not high:
+                # If we want to move to a high-rebel area, we invert the rates
+                rebel_rate = np.apply_along_axis(lambda x: m-x, 0, rebel_rate)
+            if rebel_rate[-1] == 0:
+                # If all rebel rates are zero, we randomly choose an empty neighbor
+                new_pos = self.random.choice(self.empty_neighbors)
+                self.move_to(new_pos)
+                return
+            # Normalize the rebel rates and calculate cumulative sumq
+            rebel_rate = np.divide(rebel_rate, sum(rebel_rate))
+            rebel_rate = np.cumsum(rebel_rate)
+            new_pos = None
+
+            # If all rebel rates are zero, we randomly choose an empty neighbor
+            if rebel_rate[-1] == 0:
+                new_pos = self.random.choice(self.empty_neighbors)
+            else:
+                new_pos = self.random.choices(self.empty_neighbors, weights=rebel_rate)[0]
             self.move_to(new_pos)
 
 
@@ -49,7 +87,7 @@ class Citizen(EpsteinAgent):
     """
 
     def __init__(
-        self, model, regime_legitimacy, threshold, vision, arrest_prob_constant
+        self, model, regime_legitimacy, threshold, vision, arrest_prob_constant, lamb
     ):
         """
         Create a new Citizen.
@@ -65,8 +103,9 @@ class Citizen(EpsteinAgent):
             vision: number of cells in each direction (N, S, E and W) that
                 agent can inspect. Exogenous.
             model: model instance
+            lamb: (λ) the hyperparameter for the logit model.
         """
-        super().__init__(model)
+        super().__init__(model, lamb)
         self.hardship = self.random.random()
         self.risk_aversion = self.random.random()
         self.regime_legitimacy = regime_legitimacy
@@ -82,7 +121,7 @@ class Citizen(EpsteinAgent):
         self.neighbors = []
         self.empty_neighbors = []
 
-    def step(self):
+    def step(self, rebel_layer: mesa.discrete_space.PropertyLayer):
         """
         Decide whether to activate, then move if applicable.
         """
@@ -98,7 +137,7 @@ class Citizen(EpsteinAgent):
         else:
             self.state = CitizenState.QUIET
 
-        self.move()
+        self.move(rebel_layer, False)
 
     def update_estimated_arrest_probability(self):
         """
@@ -131,9 +170,10 @@ class Cop(EpsteinAgent):
         x, y: Grid coordinates
         vision: number of cells in each direction (N, S, E and W) that cop is
             able to inspect
+        lamb: (λ) the hyperparameter for the logit model.
     """
 
-    def __init__(self, model, vision, max_jail_term):
+    def __init__(self, model, vision, max_jail_term, lamb):
         """
         Create a new Cop.
         Args:
@@ -141,12 +181,13 @@ class Cop(EpsteinAgent):
             vision: number of cells in each direction (N, S, E and W) that
                 agent can inspect. Exogenous.
             model: model instance
+            lamb: (λ) the hyperparameter for the logit model.
         """
-        super().__init__(model)
+        super().__init__(model, lamb)
         self.vision = vision
         self.max_jail_term = max_jail_term
 
-    def step(self):
+    def step(self, rebel_layer: mesa.discrete_space.PropertyLayer):
         """
         Inspect local vision and arrest a random active agent. Move if
         applicable.
@@ -161,4 +202,4 @@ class Cop(EpsteinAgent):
             arrestee.jail_sentence = self.random.randint(0, self.max_jail_term)
             arrestee.state = CitizenState.ARRESTED
 
-        self.move()
+        self.move(rebel_layer, True)
