@@ -1,5 +1,5 @@
 import mesa
-from agents import (
+from mesa.examples.advanced.epstein_civil_violence.agents import (
     Citizen,
     CitizenState,
     Cop,
@@ -50,7 +50,9 @@ class EpsteinCivilViolence(mesa.Model):
         seed=None,
         rebel_reduction=0.1,
         rebel_increase=1.0,
-        lamb=1.0
+        lamb=1.0,
+        random_move_agent=False,
+        random_move_police=False,
     ):
         super().__init__(seed=seed)
         self.movement = movement
@@ -89,7 +91,13 @@ class EpsteinCivilViolence(mesa.Model):
             )[0]
 
             if klass == Cop:
-                cop = Cop(self, vision=cop_vision, max_jail_term=max_jail_term, lamb=lamb)
+                cop = Cop(
+                    self,
+                    vision=cop_vision,
+                    max_jail_term=max_jail_term,
+                    lamb=lamb,
+                    random_move=random_move_police,
+                )
                 cop.move_to(cell)
             elif klass == Citizen:
                 citizen = Citizen(
@@ -99,6 +107,7 @@ class EpsteinCivilViolence(mesa.Model):
                     vision=citizen_vision,
                     arrest_prob_constant=arrest_prob_constant,
                     lamb=lamb,
+                    random_move=random_move_agent,
                 )
                 citizen.move_to(cell)
 

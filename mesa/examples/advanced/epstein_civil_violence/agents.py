@@ -16,15 +16,17 @@ class EpsteinAgent(mesa.discrete_space.CellAgent):
         model: model instance
         lamb: (λ) the hyperparameter for the logit model.
     """
-    def __init__(self, model, lamb):
+    def __init__(self, model, lamb, random_move):
         """
         Create a new EpsteinAgent.
         Args:
             model: the model to which the agent belongs
             lamb: (λ) the hyperparameter for the logit model.
+            random_move: whether to use the logit model for movement.
         """
         super().__init__(model)
         self.lamb = lamb
+        self.random_move = random_move
 
     def update_neighbors(self):
         """
@@ -34,8 +36,13 @@ class EpsteinAgent(mesa.discrete_space.CellAgent):
         self.neighbors = self.neighborhood.agents
         self.empty_neighbors = [c for c in self.neighborhood if c.is_empty]
 
-    def move(self, rebel_layer: mesa.discrete_space.PropertyLayer, high: bool = False):
+    def move(self, rebel_layer: mesa.discrete_space.PropertyLayer, high: bool = False, prob_random: float = 0.0):
         if self.model.movement and self.empty_neighbors:
+            if self.random_move or self.random.random() < prob_random:
+                # Randomly choose an empty neighbor
+                new_pos = self.random.choice(self.empty_neighbors)
+                self.move_to(new_pos)
+                return
             # include logit model for movement
             rebel_rate = []
             for neighbor in self.empty_neighbors:
@@ -87,7 +94,7 @@ class Citizen(EpsteinAgent):
     """
 
     def __init__(
-        self, model, regime_legitimacy, threshold, vision, arrest_prob_constant, lamb
+        self, model, regime_legitimacy, threshold, vision, arrest_prob_constant, lamb, random_move
     ):
         """
         Create a new Citizen.
@@ -102,10 +109,11 @@ class Citizen(EpsteinAgent):
                 threshold, go/remain Active
             vision: number of cells in each direction (N, S, E and W) that
                 agent can inspect. Exogenous.
-            model: model instance
+            model: model instance.
             lamb: (λ) the hyperparameter for the logit model.
+            random_move: whether to use the logit model for movement.
         """
-        super().__init__(model, lamb)
+        super().__init__(model, lamb, random_move)
         self.hardship = self.random.random()
         self.risk_aversion = self.random.random()
         self.regime_legitimacy = regime_legitimacy
@@ -137,7 +145,7 @@ class Citizen(EpsteinAgent):
         else:
             self.state = CitizenState.QUIET
 
-        self.move(rebel_layer, False)
+        self.move(rebel_layer, False, 1-self.risk_aversion)
 
     def update_estimated_arrest_probability(self):
         """
@@ -173,7 +181,7 @@ class Cop(EpsteinAgent):
         lamb: (λ) the hyperparameter for the logit model.
     """
 
-    def __init__(self, model, vision, max_jail_term, lamb):
+    def __init__(self, model, vision, max_jail_term, lamb, random_move):
         """
         Create a new Cop.
         Args:
@@ -183,7 +191,7 @@ class Cop(EpsteinAgent):
             model: model instance
             lamb: (λ) the hyperparameter for the logit model.
         """
-        super().__init__(model, lamb)
+        super().__init__(model, lamb, random_move)
         self.vision = vision
         self.max_jail_term = max_jail_term
 
