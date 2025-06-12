@@ -46,8 +46,8 @@ class EpsteinAgent(mesa.discrete_space.CellAgent):
             # include logit model for movement
             rebel_rate = []
             for neighbor in self.empty_neighbors:
-                # We calculate e(λ * rebel_rate) for each empty neighbor
-                rebel_rate.append(math.exp(self.lamb * (rebel_layer.data[neighbor.coordinate[0]][neighbor.coordinate[1]])))
+                # We calculate e(-λ * rebel_rate) for each empty neighbor
+                rebel_rate.append(math.exp(-1*self.lamb * (rebel_layer.data[neighbor.coordinate[0]][neighbor.coordinate[1]])))
             m = max(rebel_rate)
             if not high:
                 # If we want to move to a high-rebel area, we invert the rates
