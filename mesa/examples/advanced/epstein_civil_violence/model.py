@@ -120,12 +120,16 @@ class EpsteinCivilViolence(mesa.Model):
         Advance the model by one step and collect data.
         """
         # We reduce the rebel rate of all cells by a factor rebel_reduction.
-        self.layer.data = list(map(lambda x: self.rebel_reduction*x, self.layer.data))
+        self.layer.data = list(map(lambda x: (1-self.rebel_reduction)*x, self.layer.data))
+        self.layer.data = list(map(lambda x: list(map(lambda y: max(1, y), x)), self.layer.data))
+        all_data = self.layer.data
         for agent in self.agents_by_type[Citizen]:
             if agent.state == CitizenState.ACTIVE:
                 # For each cell with an active citizen, we increase the rebel rate by rebel_increase.
-                self.layer.data[agent.cell.coordinate[0]][agent.cell.coordinate[1]] += self.rebel_increase
+                all_data[agent.cell.coordinate[0]][agent.cell.coordinate[1]] += self.rebel_increase
+        self.layer.data = all_data
 
+        print(self.layer.data)
         self.agents.shuffle_do("step", rebel_layer=self.layer)
         self._update_counts()
         self.datacollector.collect(self)
