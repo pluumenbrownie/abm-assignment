@@ -1,5 +1,5 @@
 import mesa
-from mesa.examples.advanced.epstein_civil_violence.agents import (
+from mesa.examples.advanced.epstein_civil_violence.agents_new import (
     Citizen,
     CitizenState,
     Cop,
@@ -48,10 +48,18 @@ class EpsteinCivilViolence(mesa.Model):
         movement=True,
         max_iters=1000,
         seed=None,
+        reversion_rate=0.05,
+        max_legitimacy_gap=0.5,
+        repression_sensitivity=0.5 
     ):
         super().__init__(seed=seed)
         self.movement = movement
         self.max_iters = max_iters
+
+        self.legitimacy = legitimacy
+        self.reversion_rate = reversion_rate
+        self.max_legitimacy_gap = max_legitimacy_gap
+        self.repression_sensitivity = repression_sensitivity
 
         self.grid = mesa.discrete_space.OrthogonalVonNeumannGrid(
             (width, height), capacity=1, torus=True, random=self.random
@@ -65,6 +73,8 @@ class EpsteinCivilViolence(mesa.Model):
         agent_reporters = {
             "jail_sentence": lambda a: getattr(a, "jail_sentence", None),
             "arrest_probability": lambda a: getattr(a, "arrest_probability", None),
+            "regime_legitimacy": lambda a: getattr(a, "regime_legitimacy", None),
+            "repression_sensitivity": lambda a: getattr(a, "repression_sensitivity", None),
         }
         self.datacollector = mesa.DataCollector(
             model_reporters=model_reporters, agent_reporters=agent_reporters
@@ -84,10 +94,13 @@ class EpsteinCivilViolence(mesa.Model):
             elif klass == Citizen:
                 citizen = Citizen(
                     self,
-                    regime_legitimacy=legitimacy,
+                    regime_legitimacy=self.legitimacy,
                     threshold=active_threshold,
                     vision=citizen_vision,
                     arrest_prob_constant=arrest_prob_constant,
+                    reversion_rate=self.reversion_rate,
+                    max_legitimacy_gap=self.max_legitimacy_gap,
+                    repression_sensitivity=self.repression_sensitivity
                 )
                 citizen.move_to(cell)
 

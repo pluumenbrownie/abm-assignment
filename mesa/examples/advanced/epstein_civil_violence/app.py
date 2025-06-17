@@ -1,4 +1,4 @@
-from mesa.examples.advanced.epstein_civil_violence.agents import (
+from mesa.examples.advanced.epstein_civil_violence.agents_new import (
     Citizen,
     CitizenState,
     Cop,
