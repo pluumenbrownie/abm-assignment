@@ -73,6 +73,7 @@ class EpsteinCivilViolence(mesa.Model):
             "active": CitizenState.ACTIVE.name,
             "quiet": CitizenState.QUIET.name,
             "arrested": CitizenState.ARRESTED.name,
+            "rebellion_rate": lambda m: m.layer.data,
         }
         agent_reporters = {
             "jail_sentence": lambda a: getattr(a, "jail_sentence", None),
@@ -129,7 +130,6 @@ class EpsteinCivilViolence(mesa.Model):
                 all_data[agent.cell.coordinate[0]][agent.cell.coordinate[1]] += self.rebel_increase
         self.layer.data = all_data
 
-        print(self.layer.data)
         self.agents.shuffle_do("step", rebel_layer=self.layer)
         self._update_counts()
         self.datacollector.collect(self)
