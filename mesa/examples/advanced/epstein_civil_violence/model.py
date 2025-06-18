@@ -47,7 +47,9 @@ class EpsteinCivilViolence(mesa.Model):
         arrest_prob_constant=2.3,
         movement=True,
         max_iters=1000,
-        seed=None,
+        seed=None
+        # capacity=200,
+        # occupation=0
     ):
         super().__init__(seed=seed)
         self.movement = movement

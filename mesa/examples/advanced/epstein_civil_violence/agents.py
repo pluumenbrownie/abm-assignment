@@ -69,7 +69,8 @@ class Citizen(EpsteinAgent):
         super().__init__(model)
         self.hardship = self.random.random()
         self.risk_aversion = self.random.random()
-        self.regime_legitimacy = regime_legitimacy
+        self.regime_legitimacy = self.random.uniforn(max(regime_legitimacy-0.2, 0), min(regime_legitimacy+0.2, 1))
+        self.c_regime_legitimacy = self.regime_legitimacy
         self.threshold = threshold
         self.state = CitizenState.QUIET
         self.vision = vision
@@ -88,7 +89,14 @@ class Citizen(EpsteinAgent):
         """
         if self.jail_sentence:
             self.jail_sentence -= 1
+            self.c_regime_legitimacy = max(self.c_regime_legitimacy-0.1, 0)
+            # if self.jail_sentence == 1:
+            #     self.occupation -=1
             return  # no other changes or movements if agent is in jail.
+        else:
+            self.c_regime_legitimacy = min(self.c_regime_legitimacy+0.1, self.regime_legitimacy)
+        
+        self.grievance = self.hardship * (1 - self.c_regime_legitimacy)
         self.update_neighbors()
         self.update_estimated_arrest_probability()
 
@@ -160,5 +168,14 @@ class Cop(EpsteinAgent):
             arrestee = self.random.choice(active_neighbors)
             arrestee.jail_sentence = self.random.randint(0, self.max_jail_term)
             arrestee.state = CitizenState.ARRESTED
+        
+        # if active_neighbors and self.occupation < self.capacity:
+        #     print('occupation okay')
+        #     arrestee = self.random.choice(active_neighbors)
+        #     arrestee.jail_sentence = self.random.randint(0, self.max_jail_term)
+        #     arrestee.state = CitizenState.ARRESTED
+        #     self.occupation+=1
+        # elif self.occupation > self.capacity:
+        #     print('occupation too high')
 
         self.move()
