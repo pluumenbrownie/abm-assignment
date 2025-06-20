@@ -74,6 +74,14 @@ class EpsteinCivilViolence(mesa.Model):
             "quiet": CitizenState.QUIET.name,
             "arrested": CitizenState.ARRESTED.name,
             "rebellion_rate": lambda m: m.layer.data,
+            "police_location": lambda m: [
+                [cop.cell.coordinate[0], cop.cell.coordinate[1]]
+                for cop in m.agents_by_type[Cop]
+            ],
+            "citizen_location": lambda m: [
+                [citizen.cell.coordinate[0], citizen.cell.coordinate[1]]
+                for citizen in m.agents_by_type[Citizen]
+            ],
         }
         agent_reporters = {
             "jail_sentence": lambda a: getattr(a, "jail_sentence", None),
