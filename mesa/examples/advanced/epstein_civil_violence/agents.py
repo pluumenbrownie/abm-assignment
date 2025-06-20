@@ -36,37 +36,36 @@ class EpsteinAgent(mesa.discrete_space.CellAgent):
         self.neighbors = self.neighborhood.agents
         self.empty_neighbors = [c for c in self.neighborhood if c.is_empty]
 
-    def move(self, rebel_layer: mesa.discrete_space.PropertyLayer, high: bool = False, prob_random: float = 0.0):
+    def move(self, prob_quite=0.0):
         if self.model.movement and self.empty_neighbors:
-            if self.random_move or self.random.random() < prob_random:
+            if self.random_move:
                 # Randomly choose an empty neighbor
                 new_pos = self.random.choice(self.empty_neighbors)
                 self.move_to(new_pos)
                 return
-            # include logit model for movement
-            rebel_rate = []
+            values = []
             for neighbor in self.empty_neighbors:
-                # We calculate e(-λ * rebel_rate) for each empty neighbor
-                rebel_rate.append(math.exp(-1*self.lamb * (rebel_layer.data[neighbor.coordinate[0]][neighbor.coordinate[1]])))
-            m = max(rebel_rate)
-            if not high:
-                # If we want to move to a high-rebel area, we invert the rates
-                rebel_rate = np.apply_along_axis(lambda x: m-x, 0, rebel_rate)
-            if rebel_rate[-1] == 0:
+                agents = neighbor.neighborhood.agents
+                quiet_count = 0
+                for agent in agents:
+                    if isinstance(agent, Citizen) and agent.state == CitizenState.QUIET and agent.cell != self.cell:
+                        quiet_count += 1
+                quiet_count += 1
+                values.append(prob_quite/quiet_count)
+            if sum(values) == 0:
                 # If all rebel rates are zero, we randomly choose an empty neighbor
                 new_pos = self.random.choice(self.empty_neighbors)
                 self.move_to(new_pos)
                 return
-            # Normalize the rebel rates and calculate cumulative sumq
-            rebel_rate = np.divide(rebel_rate, sum(rebel_rate))
-            rebel_rate = np.cumsum(rebel_rate)
+            values = np.divide(values, sum(values))
+            values = np.cumsum(values)
             new_pos = None
 
             # If all rebel rates are zero, we randomly choose an empty neighbor
-            if rebel_rate[-1] == 0:
+            if values[-1] == 0:
                 new_pos = self.random.choice(self.empty_neighbors)
             else:
-                new_pos = self.random.choices(self.empty_neighbors, weights=rebel_rate)[0]
+                new_pos = self.random.choices(self.empty_neighbors, weights=values)[0]
             self.move_to(new_pos)
 
 
@@ -94,7 +93,7 @@ class Citizen(EpsteinAgent):
     """
 
     def __init__(
-        self, model, regime_legitimacy, threshold, vision, arrest_prob_constant, lamb, random_move
+        self, model, regime_legitimacy, threshold, vision, arrest_prob_constant, lamb, random_move, prob_quiet
     ):
         """
         Create a new Citizen.
@@ -124,19 +123,23 @@ class Citizen(EpsteinAgent):
         self.grievance = self.hardship * (1 - self.regime_legitimacy)
         self.arrest_prob_constant = arrest_prob_constant
         self.arrest_probability = None
+        self.prob_quiet = prob_quiet
 
         self.neighborhood = []
         self.neighbors = []
         self.empty_neighbors = []
 
-    def step(self, rebel_layer: mesa.discrete_space.PropertyLayer):
+    def step(self):
         """
         Decide whether to activate, then move if applicable.
         """
         if self.jail_sentence:
             self.jail_sentence -= 1
             return  # no other changes or movements if agent is in jail.
+
         self.update_neighbors()
+        self.move(self.prob_quiet)
+
         self.update_estimated_arrest_probability()
 
         net_risk = self.risk_aversion * self.arrest_probability
@@ -144,8 +147,6 @@ class Citizen(EpsteinAgent):
             self.state = CitizenState.ACTIVE
         else:
             self.state = CitizenState.QUIET
-
-        self.move(rebel_layer, False, 1-self.risk_aversion)
 
     def update_estimated_arrest_probability(self):
         """
@@ -158,7 +159,9 @@ class Citizen(EpsteinAgent):
             if isinstance(neighbor, Cop):
                 cops_in_vision += 1
             elif neighbor.state == CitizenState.ACTIVE:
-                actives_in_vision += 1
+                actives_in_vision += (1-self.prob_quiet)
+            elif neighbor.state == CitizenState.QUIET:
+                actives_in_vision += self.prob_quiet
 
         # there is a body of literature on this equation
         # the round is not in the pnas paper but without it, its impossible to replicate
@@ -179,9 +182,10 @@ class Cop(EpsteinAgent):
         vision: number of cells in each direction (N, S, E and W) that cop is
             able to inspect
         lamb: (λ) the hyperparameter for the logit model.
+        prob_quiet: probability of arresting a quite citizen instead of an active one.
     """
 
-    def __init__(self, model, vision, max_jail_term, lamb, random_move):
+    def __init__(self, model, vision, max_jail_term, lamb, prob_quiet):
         """
         Create a new Cop.
         Args:
@@ -191,23 +195,33 @@ class Cop(EpsteinAgent):
             model: model instance
             lamb: (λ) the hyperparameter for the logit model.
         """
-        super().__init__(model, lamb, random_move)
+        super().__init__(model, lamb, True)
         self.vision = vision
         self.max_jail_term = max_jail_term
+        self.prob_quiet = prob_quiet
 
-    def step(self, rebel_layer: mesa.discrete_space.PropertyLayer):
+    def step(self):
         """
         Inspect local vision and arrest a random active agent. Move if
         applicable.
         """
         self.update_neighbors()
+
+        self.move()
+
         active_neighbors = []
+        quiet_neighbors = []
         for agent in self.neighbors:
             if isinstance(agent, Citizen) and agent.state == CitizenState.ACTIVE:
                 active_neighbors.append(agent)
+            elif isinstance(agent, Citizen) and agent.state == CitizenState.QUIET:
+                quiet_neighbors.append(agent)
         if active_neighbors:
-            arrestee = self.random.choice(active_neighbors)
+            if self.random.random() < self.prob_quiet and quiet_neighbors:
+                # Arrest a random quiet citizen
+                arrestee = self.random.choice(quiet_neighbors)
+            else:
+                # Arrest a random active citizen
+                arrestee = self.random.choice(active_neighbors)
             arrestee.jail_sentence = self.random.randint(0, self.max_jail_term)
             arrestee.state = CitizenState.ARRESTED
-
-        self.move(rebel_layer, True)

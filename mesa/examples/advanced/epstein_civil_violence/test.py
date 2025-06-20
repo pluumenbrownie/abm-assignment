@@ -47,7 +47,6 @@ model = EpsteinCivilViolence(
     width=nx,
     max_jail_term=1,
     max_iters=100,
-    rebel_increase=100
 )  # cap the number of steps the model takes
 model.run_model()
 model_data = model.datacollector.get_model_vars_dataframe()
