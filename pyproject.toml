@@ -40,7 +40,8 @@ dependencies = [
   "tqdm",
   "scipy",
   "pythran>=0.17.0 ; sys_platform == 'darwin'", # required for darwin scipy overrides in nix
-
+  "networkx",
+  "mesa[all]",
 ]
 dynamic = ["version"]
 
@@ -49,14 +50,8 @@ dynamic = ["version"]
 rec = ["mesa[network,viz]"]
 all = ["mesa[network,viz,dev,examples,docs]"]
 # Core dependencies
-network = [
-  "networkx",
-]
-viz = [
-  "matplotlib",
-  "solara",
-  "altair",
-]
+network = ["networkx"]
+viz = ["matplotlib", "solara", "altair"]
 # Dev and CI stuff
 dev = [
   "mesa[rec]",
@@ -70,11 +65,7 @@ dev = [
   "playwright",
   "ipython>=9.2.0",
 ]
-examples = [
-  "mesa[rec]",
-  "pytest",
-  "scipy",
-]
+examples = ["mesa[rec]", "pytest", "scipy"]
 docs = [
   "mesa[rec]",
   "sphinx",
@@ -82,8 +73,8 @@ docs = [
   "pydata_sphinx_theme",
   "seaborn",
   "myst-nb",
-  "myst-parser",  # Markdown in Sphinx
-  "sphinx-copybutton", # Add a copy option in docs
+  "myst-parser",         # Markdown in Sphinx
+  "sphinx-copybutton",   # Add a copy option in docs
 ]
 
 [project.urls]
@@ -128,7 +119,7 @@ select = [
   "UP",  # upgrade
   "W",   # style warnings
   "YTT", # sys.version
-  "D",  # docstring
+  "D",   # docstring
 ]
 # Ignore list taken from https://github.com/psf/black/blob/master/.flake8
 # E203	Whitespace before ':'
@@ -152,7 +143,19 @@ extend-ignore = [
   "S311",   # Standard pseudo-random generators are not suitable for cryptographic purposes
 ]
 # Ignore all docstring errors in examples and tutorials
-per-file-ignores = {"mesa/examples/*"= ["D"], "docs/tutorials/*" = ["D", "E", "F", "N"], "docs/conf.py"=["C", "D", "DTZ011", "E"]}
+per-file-ignores = { "mesa/examples/*" = [
+  "D",
+], "docs/tutorials/*" = [
+  "D",
+  "E",
+  "F",
+  "N",
+], "docs/conf.py" = [
+  "C",
+  "D",
+  "DTZ011",
+  "E",
+] }
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
