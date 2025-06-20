@@ -48,7 +48,6 @@ class EpsteinCivilViolence(mesa.Model):
         movement=True,
         max_iters=1000,
         seed=None,
-        lamb=1.0,
         random_move_agent=False,
         prob_quiet=0.1,
     ):
@@ -94,7 +93,6 @@ class EpsteinCivilViolence(mesa.Model):
                     self,
                     vision=cop_vision,
                     max_jail_term=max_jail_term,
-                    lamb=lamb,
                     prob_quiet=prob_quiet,
                 )
                 cop.move_to(cell)
@@ -105,7 +103,6 @@ class EpsteinCivilViolence(mesa.Model):
                     threshold=active_threshold,
                     vision=citizen_vision,
                     arrest_prob_constant=arrest_prob_constant,
-                    lamb=lamb,
                     random_move=random_move_agent,
                     prob_quiet=prob_quiet,
                 )

@@ -3,6 +3,7 @@ import numpy as np
 import sys
 import math
 from scipy.spatial import distance_matrix
+import matplotlib.pyplot as plt
 
 def ripley_k_function(points, radii, area=None):
     """
@@ -53,12 +54,26 @@ model_data = model.datacollector.get_model_vars_dataframe()
 police = model_data["police_location"].values
 citizen = model_data["citizen_location"].values
 
-for i, row in enumerate(zip(police, citizen)):
-    radii = np.linspace(0.1, 10.0, 50)
-    ripley_l_police = ripley_l_function(points=np.array(row[0]), radii=radii, area=nx*ny)
-    ripley_l_citizen = ripley_l_function(points=np.array(row[1]), radii=radii, area=nx*ny)
-    print(f"Step {i}: Ripley's L-function for police: {ripley_l_police}, radii: {radii}")
-    print(f"Step {i}: Ripley's L-function for citizen: {ripley_l_citizen}, radii: {radii}")
+radii = np.linspace(0.1, 10.0, 50)
+ripley_l_police = ripley_l_function(points=np.array(police[-1]), radii=radii, area=nx*ny)
+ripley_l_citizen = ripley_l_function(points=np.array(citizen[-1]), radii=radii, area=nx*ny)
+
+plt.plot(radii, ripley_l_police, label='Police L-function')
+plt.plot(radii, ripley_l_citizen, label='Citizen L-function')
+plt.xlabel('Radius')
+plt.ylabel("Ripley's L-function")
+plt.title("Ripley's L-function for Police and Citizen Locations")
+plt.legend()
+plt.grid()
+plt.savefig("ripley_l_function.png")
+
+# for i, row in enumerate(zip(police, citizen)):
+    # radii = np.linspace(0.1, 10.0, 50)
+    # ripley_l_police = ripley_l_function(points=np.array(row[0]), radii=radii, area=nx*ny)
+    # ripley_l_citizen = ripley_l_function(points=np.array(row[1]), radii=radii, area=nx*ny)
+    # print(f"Step {i}: Ripley's L-function for police: {ripley_l_police}, radii: {radii}")
+    # print(f"Step {i}: Ripley's L-function for citizen: {ripley_l_citizen}, radii: {radii}")
+    
 
 
 # @article{lynch2008spatiotemporal,

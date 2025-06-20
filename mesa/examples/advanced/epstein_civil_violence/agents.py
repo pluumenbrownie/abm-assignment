@@ -14,18 +14,15 @@ class EpsteinAgent(mesa.discrete_space.CellAgent):
     """
     Attributes:
         model: model instance
-        lamb: (λ) the hyperparameter for the logit model.
     """
-    def __init__(self, model, lamb, random_move):
+    def __init__(self, model, random_move):
         """
         Create a new EpsteinAgent.
         Args:
             model: the model to which the agent belongs
-            lamb: (λ) the hyperparameter for the logit model.
             random_move: whether to use the logit model for movement.
         """
         super().__init__(model)
-        self.lamb = lamb
         self.random_move = random_move
 
     def update_neighbors(self):
@@ -93,7 +90,7 @@ class Citizen(EpsteinAgent):
     """
 
     def __init__(
-        self, model, regime_legitimacy, threshold, vision, arrest_prob_constant, lamb, random_move, prob_quiet
+        self, model, regime_legitimacy, threshold, vision, arrest_prob_constant, random_move, prob_quiet
     ):
         """
         Create a new Citizen.
@@ -109,10 +106,9 @@ class Citizen(EpsteinAgent):
             vision: number of cells in each direction (N, S, E and W) that
                 agent can inspect. Exogenous.
             model: model instance.
-            lamb: (λ) the hyperparameter for the logit model.
             random_move: whether to use the logit model for movement.
         """
-        super().__init__(model, lamb, random_move)
+        super().__init__(model, random_move)
         self.hardship = self.random.random()
         self.risk_aversion = self.random.random()
         self.regime_legitimacy = regime_legitimacy
@@ -181,11 +177,10 @@ class Cop(EpsteinAgent):
         x, y: Grid coordinates
         vision: number of cells in each direction (N, S, E and W) that cop is
             able to inspect
-        lamb: (λ) the hyperparameter for the logit model.
         prob_quiet: probability of arresting a quite citizen instead of an active one.
     """
 
-    def __init__(self, model, vision, max_jail_term, lamb, prob_quiet):
+    def __init__(self, model, vision, max_jail_term, prob_quiet):
         """
         Create a new Cop.
         Args:
@@ -193,9 +188,8 @@ class Cop(EpsteinAgent):
             vision: number of cells in each direction (N, S, E and W) that
                 agent can inspect. Exogenous.
             model: model instance
-            lamb: (λ) the hyperparameter for the logit model.
         """
-        super().__init__(model, lamb, True)
+        super().__init__(model, True)
         self.vision = vision
         self.max_jail_term = max_jail_term
         self.prob_quiet = prob_quiet
