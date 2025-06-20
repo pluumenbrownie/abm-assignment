@@ -42,6 +42,7 @@ dependencies = [
   "pythran>=0.17.0 ; sys_platform == 'darwin'", # required for darwin scipy overrides in nix
   "networkx",
   "mesa[all]",
+  "salib>=1.5.1",
 ]
 dynamic = ["version"]
 
