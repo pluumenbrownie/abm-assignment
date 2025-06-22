@@ -90,7 +90,17 @@ class Citizen(EpsteinAgent):
     """
 
     def __init__(
-        self, model, regime_legitimacy, threshold, vision, arrest_prob_constant, random_move, prob_quiet
+        self,
+        model,
+        regime_legitimacy,
+        threshold,
+        vision,
+        arrest_prob_constant,
+        random_move,
+        prob_quiet,
+        reversion_rate=0.5,
+        max_legitimacy_gap=0.1,
+        repression_sensitivity=0.5
     ):
         """
         Create a new Citizen.
@@ -121,6 +131,10 @@ class Citizen(EpsteinAgent):
         self.arrest_probability = None
         self.prob_quiet = prob_quiet
 
+        self.max_legitimacy_gap = max_legitimacy_gap # how much we allow legitimacy to drop
+        self.reversion_rate = reversion_rate # the rate at which legitimacy returns to baseline
+        self.repression_sensitivity = repression_sensitivity # 1 very resilient, 0 very sensitive
+
         self.neighborhood = []
         self.neighbors = []
         self.empty_neighbors = []
@@ -134,9 +148,9 @@ class Citizen(EpsteinAgent):
             return  # no other changes or movements if agent is in jail.
 
         self.update_neighbors()
-        self.move(self.prob_quiet)
-
         self.update_estimated_arrest_probability()
+        self.update_observed_violence()
+        self.move(self.prob_quiet)
 
         net_risk = self.risk_aversion * self.arrest_probability
         if (self.grievance - net_risk) > self.threshold:
@@ -166,6 +180,34 @@ class Citizen(EpsteinAgent):
             -1 * self.arrest_prob_constant * round(cops_in_vision / actives_in_vision)
         )
 
+    def update_observed_violence(self):
+        """
+        Return the number of arrested agents in the neighborhood.
+        """
+        arrests_in_vision = 0
+        for neighbor in self.neighbors:
+            if neighbor.state == CitizenState.ARRESTED:
+                arrests_in_vision += 1
+
+        baseline = self.original_legitimacy
+        max_gap = self.max_legitimacy_gap
+        alpha = self.reversion_rate
+
+        # Minimum allowable legitimacy
+        min_legitimacy = baseline * (1 - max_gap)
+        
+        if arrests_in_vision > 0:
+        # Target a drop toward min_legitimacy, proportional to arrests
+        # The more arrests, the closer the target is to the floor
+            scaling = 0.1 + (1.0 - self.repression_sensitivity) * 0.9  # ensures >0 division
+            decay_fraction = min(1.0, arrests_in_vision / (scaling * 10))
+            target = baseline - decay_fraction * (baseline - min_legitimacy)
+        else:
+        # No arrests → recover toward baseline
+            target = baseline
+
+    # Exponential approach to target
+        self.regime_legitimacy += alpha * (target - self.regime_legitimacy)
 
 class Cop(EpsteinAgent):
     """
