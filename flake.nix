@@ -1,4 +1,3 @@
-
 {
   description = "Mesa flake using uv2nix";
 
@@ -25,18 +24,16 @@
     };
   };
 
-  outputs =
-    { self
-    , nixpkgs
-    , flake-utils
-    , uv2nix
-    , pyproject-nix
-    , pyproject-build-systems
-    , ...
-    }:
-
-    flake-utils.lib.eachSystem ["x86_64-linux" "aarch64-darwin"] (system:
-    let
+  outputs = {
+    self,
+    nixpkgs,
+    flake-utils,
+    uv2nix,
+    pyproject-nix,
+    pyproject-build-systems,
+    ...
+  }:
+    flake-utils.lib.eachSystem ["x86_64-linux" "aarch64-darwin"] (system: let
       inherit (nixpkgs) lib;
 
       # Use system-specific pkgs
@@ -44,7 +41,7 @@
 
       # Load a uv workspace from a workspace root.
       # Uv2nix treats all uv projects as workspace projects.
-      workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./.; };
+      workspace = uv2nix.lib.workspace.loadWorkspace {workspaceRoot = ./.;};
 
       # Create package overlay from workspace.
       overlay = workspace.mkPyprojectOverlay {
@@ -56,29 +53,33 @@
       pyprojectOverrides = final: prev: {
         # Add the scipy override (need to do uv add pythran)
         scipy = prev.scipy.overrideAttrs (old: {
-          nativeBuildInputs = (old.nativeBuildInputs or []) ++ [
-            final.meson-python
-            final.ninja
-            final.cython
-            final.numpy
-            final.pybind11
-            final.packaging
-            final.pyproject-metadata
-            final.pythran
-            final.gast
-            final.beniget
-            final.ply
-          ];
+          nativeBuildInputs =
+            (old.nativeBuildInputs or [])
+            ++ [
+              final.meson-python
+              final.ninja
+              final.cython
+              final.numpy
+              final.pybind11
+              final.packaging
+              final.pyproject-metadata
+              final.pythran
+              final.gast
+              final.beniget
+              final.ply
+            ];
 
-          buildInputs = (old.buildInputs or []) ++ [
-            pkgs.gfortran
-            pkgs.cmake
-            pkgs.xsimd
-            pkgs.pkg-config
-            pkgs.openblas
-            pkgs.meson
-            pkgs.lapack
-          ];
+          buildInputs =
+            (old.buildInputs or [])
+            ++ [
+              pkgs.gfortran
+              pkgs.cmake
+              pkgs.xsimd
+              pkgs.pkg-config
+              pkgs.openblas
+              pkgs.meson
+              pkgs.lapack
+            ];
         });
       };
 
@@ -88,16 +89,14 @@
         (pkgs.callPackage pyproject-nix.build.packages {
           inherit python;
         }).overrideScope
-          (
-            lib.composeManyExtensions [
-              pyproject-build-systems.overlays.default
-              overlay
-              pyprojectOverrides
-            ]
-          );
-
-    in
-    {
+        (
+          lib.composeManyExtensions [
+            pyproject-build-systems.overlays.default
+            overlay
+            pyprojectOverrides
+          ]
+        );
+    in {
       # Package a virtual environment as our main application.
       #
       # Enable no optional dependencies for production build.
@@ -128,6 +127,9 @@
               UV_PYTHON_DOWNLOADS = "never";
               # Force uv to use nixpkgs Python interpreter
               UV_PYTHON = python.interpreter;
+
+              # DON'T upgrade random packages when running
+              UV_FROZEN = 1;
             }
             // lib.optionalAttrs pkgs.stdenv.isLinux {
               # Python libraries often load native shared objects using dlopen(3).
@@ -145,64 +147,60 @@
         # This means that any changes done to your local files do not require a rebuild.
         #
         # Note: Editable package support is still unstable and subject to change.
-        uv2nix =
-          let
-            # Create an overlay enabling editable mode for all local dependencies.
-            editableOverlay = workspace.mkEditablePyprojectOverlay {
-              # Use environment variable
-              root = "$REPO_ROOT";
-              # Optional: Only enable editable for these packages
-              members = [ "mesa" ];
-            };
+        uv2nix = let
+          # Create an overlay enabling editable mode for all local dependencies.
+          editableOverlay = workspace.mkEditablePyprojectOverlay {
+            # Use environment variable
+            root = "$REPO_ROOT";
+            # Optional: Only enable editable for these packages
+            members = ["mesa"];
+          };
 
-            # Override previous set with our overridable overlay.
-            editablePythonSet = pythonSet.overrideScope (
-              lib.composeManyExtensions [
-                editableOverlay
+          # Override previous set with our overridable overlay.
+          editablePythonSet = pythonSet.overrideScope (
+            lib.composeManyExtensions [
+              editableOverlay
 
-                # Apply fixups for building an editable package of your workspace packages
-                (final: prev: {
-                  mesa = prev.mesa.overrideAttrs (old: {
-                    # It's a good idea to filter the sources going into an editable build
-                    # so the editable package doesn't have to be rebuilt on every change.
-                    src = lib.fileset.toSource {
-                      root = old.src;
-                      fileset = lib.fileset.unions [
-                        (old.src + "/pyproject.toml")
-                        (old.src + "/README.md")
-                        (old.src + "/mesa/__init__.py")
-                      ];
+              # Apply fixups for building an editable package of your workspace packages
+              (final: prev: {
+                mesa = prev.mesa.overrideAttrs (old: {
+                  # It's a good idea to filter the sources going into an editable build
+                  # so the editable package doesn't have to be rebuilt on every change.
+                  src = lib.fileset.toSource {
+                    root = old.src;
+                    fileset = lib.fileset.unions [
+                      (old.src + "/pyproject.toml")
+                      (old.src + "/README.md")
+                      (old.src + "/mesa/__init__.py")
+                    ];
+                  };
+
+                  # Hatchling (our build system) has a dependency on the `editables` package when building editables.
+                  #
+                  # In normal Python flows this dependency is dynamically handled, and doesn't need to be explicitly declared.
+                  # This behaviour is documented in PEP-660.
+                  #
+                  # With Nix the dependency needs to be explicitly declared.
+                  nativeBuildInputs =
+                    old.nativeBuildInputs
+                    ++ final.resolveBuildSystem {
+                      editables = [];
                     };
+                });
+              })
+            ]
+          );
 
-                    # Hatchling (our build system) has a dependency on the `editables` package when building editables.
-                    #
-                    # In normal Python flows this dependency is dynamically handled, and doesn't need to be explicitly declared.
-                    # This behaviour is documented in PEP-660.
-                    #
-                    # With Nix the dependency needs to be explicitly declared.
-                    nativeBuildInputs =
-                      old.nativeBuildInputs
-                      ++ final.resolveBuildSystem {
-                        editables = [ ];
-                      };
-                  });
-
-                })
-              ]
-            );
-
-            # Build virtual environment, with local packages being editable.
-            #
-            # Enable all optional dependencies for development.
-            virtualenv = editablePythonSet.mkVirtualEnv "mesa-dev-env" workspace.deps.all;
-
-          in
+          # Build virtual environment, with local packages being editable.
+          #
+          # Enable all optional dependencies for development.
+          virtualenv = editablePythonSet.mkVirtualEnv "mesa-dev-env" workspace.deps.all;
+        in
           pkgs.mkShell {
             packages = [
               virtualenv
               pkgs.uv
               pkgs.pre-commit
-
             ];
 
             env = {
@@ -214,6 +212,9 @@
 
               # Prevent uv from downloading managed Python's
               UV_PYTHON_DOWNLOADS = "never";
+
+              # DON'T upgrade random packages when running
+              UV_FROZEN = 1;
             };
 
             shellHook = ''
