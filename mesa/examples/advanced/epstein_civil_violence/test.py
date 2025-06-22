@@ -55,26 +55,29 @@ police = model_data["police_location"].values
 citizen = model_data["citizen_location"].values
 
 radii = np.linspace(0.1, 10.0, 50)
-ripley_l_police = ripley_l_function(points=np.array(police[-1]), radii=radii, area=nx*ny)
-ripley_l_citizen = ripley_l_function(points=np.array(citizen[-1]), radii=radii, area=nx*ny)
 
-plt.plot(radii, ripley_l_police, label='Police L-function')
-plt.plot(radii, ripley_l_citizen, label='Citizen L-function')
+police_data = []
+citizen_data = []
+for i, row in enumerate(zip(police, citizen)):
+    radii = np.linspace(0.1, 10.0, 50)
+    ripley_l_police = ripley_l_function(points=np.array(row[0]), radii=radii, area=nx*ny)
+    ripley_l_citizen = ripley_l_function(points=np.array(row[1]), radii=radii, area=nx*ny)
+    police_data.append(ripley_l_police)
+    citizen_data.append(ripley_l_citizen)
+police_data = np.array(police_data)
+citizen_data = np.array(citizen_data)
+police_mean = np.mean(police_data, axis=0)
+citizen_mean = np.mean(citizen_data, axis=0)
+police_std = np.std(police_data, axis=0)
+citizen_std = np.std(citizen_data, axis=0)
+plt.errorbar(radii, police_mean, yerr=police_std, label='Police L-function', fmt='-o', capsize=5)
+plt.errorbar(radii, citizen_mean, yerr=citizen_std, label='Citizen L-function', fmt='-o', capsize=5)
 plt.xlabel('Radius')
 plt.ylabel("Ripley's L-function")
 plt.title("Ripley's L-function for Police and Citizen Locations")
 plt.legend()
 plt.grid()
-plt.savefig("ripley_l_function.png")
-
-# for i, row in enumerate(zip(police, citizen)):
-    # radii = np.linspace(0.1, 10.0, 50)
-    # ripley_l_police = ripley_l_function(points=np.array(row[0]), radii=radii, area=nx*ny)
-    # ripley_l_citizen = ripley_l_function(points=np.array(row[1]), radii=radii, area=nx*ny)
-    # print(f"Step {i}: Ripley's L-function for police: {ripley_l_police}, radii: {radii}")
-    # print(f"Step {i}: Ripley's L-function for citizen: {ripley_l_citizen}, radii: {radii}")
-    
-
+plt.savefig("ripley_l_function_mean_std.png")
 
 # @article{lynch2008spatiotemporal,
 #   title={A spatiotemporal Ripley’s K-function to analyze interactions between spruce budworm and fire in British Columbia, Canada},
