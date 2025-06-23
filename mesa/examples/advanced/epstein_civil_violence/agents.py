@@ -92,7 +92,6 @@ class Citizen(EpsteinAgent):
     def __init__(
         self,
         model,
-        regime_legitimacy,
         threshold,
         vision,
         arrest_prob_constant,
@@ -121,7 +120,8 @@ class Citizen(EpsteinAgent):
         super().__init__(model, random_move)
         self.hardship = self.random.random()
         self.risk_aversion = self.random.random()
-        self.regime_legitimacy = regime_legitimacy
+        self.regime_legitimacy = self.random.random()
+        self.original_legitimacy = self.regime_legitimacy
         self.threshold = threshold
         self.state = CitizenState.QUIET
         self.vision = vision

@@ -4,7 +4,7 @@ import mesa
 #     CitizenState,
 #     Cop,
 # )
-from agents_new import (
+from agents import (
     Citizen,
     CitizenState,
     Cop,
