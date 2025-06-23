@@ -35,6 +35,7 @@ from functools import partial
 from multiprocessing import Pool
 from typing import Any
 
+from pandas import DataFrame
 from tqdm.auto import tqdm
 
 from mesa.model import Model
@@ -44,7 +45,7 @@ multiprocessing.set_start_method("spawn", force=True)
 
 def batch_run_not_stupid(
     model_cls: type[Model],
-    parameters: Mapping[str, Any | Iterable[Any]],
+    parameters: DataFrame,
     # We still retain the Optional[int] because users may set it to None (i.e. use all CPUs)
     number_processes: int | None = 1,
     iterations: int = 1,
@@ -73,10 +74,40 @@ def batch_run_not_stupid(
     runs_list = []
     run_id = 0
     for iteration in range(iterations):
+        inner_runs_list = []
         for _, params in parameters.iterrows():
-            runs_list.append((run_id, iteration, params))
+            inner_runs_list.append((run_id, iteration, params))
             run_id += 1
+        runs_list.append(inner_runs_list)
 
+    with tqdm(
+        total=len(runs_list[0]) * iterations, disable=not display_progress
+    ) as pbar:
+        results = []
+        for iteration in runs_list:
+            results.extend(
+                _inner_not_stupid(
+                    model_cls,
+                    number_processes,
+                    data_collection_period,
+                    max_steps,
+                    pbar,
+                    iteration,
+                )
+            )
+
+    return results
+
+
+def _inner_not_stupid(
+    model_cls,
+    number_processes,
+    data_collection_period,
+    max_steps,
+    pbar,
+    runs_list,
+):
+    """I hope splitting this solves the memory leak."""
     process_func = partial(
         _model_run_func,
         model_cls,
@@ -86,18 +117,16 @@ def batch_run_not_stupid(
 
     results: list[dict[str, Any]] = []
 
-    with tqdm(total=len(runs_list), disable=not display_progress) as pbar:
-        if number_processes == 1:
-            for run in runs_list:
-                data = process_func(run)
+    if number_processes == 1:
+        for run in runs_list:
+            data = process_func(run)
+            results.extend(data)
+            pbar.update()
+    else:
+        with Pool(number_processes) as p:
+            for data in p.imap_unordered(process_func, runs_list):
                 results.extend(data)
                 pbar.update()
-        else:
-            with Pool(number_processes) as p:
-                for data in p.imap_unordered(process_func, runs_list):
-                    results.extend(data)
-                    pbar.update()
-
     return results
 
 
