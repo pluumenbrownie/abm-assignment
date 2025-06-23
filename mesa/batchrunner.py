@@ -73,16 +73,19 @@ def batch_run_not_stupid(
     """
     runs_list = []
     run_id = 0
+    inner_runs_list = []
     for iteration in range(iterations):
-        inner_runs_list = []
         for _, params in parameters.iterrows():
             inner_runs_list.append((run_id, iteration, params))
             run_id += 1
-        runs_list.append(inner_runs_list)
+            if run_id % 256 == 0 and run_id != 0:
+                runs_list.append(inner_runs_list)
+                inner_runs_list = []
+    runs_list.append(inner_runs_list)
 
-    with tqdm(
-        total=len(runs_list[0]) * iterations, disable=not display_progress
-    ) as pbar:
+    run_amount = sum(len(inner) for inner in runs_list)
+
+    with tqdm(total=run_amount, disable=not display_progress) as pbar:
         results = []
         for iteration in runs_list:
             results.extend(
