@@ -1,43 +1,7 @@
 from model import EpsteinCivilViolence
 import numpy as np
 import sys
-import math
-from scipy.spatial import distance_matrix
 import matplotlib.pyplot as plt
-
-def ripley_k_function(points, radii, area=None):
-    """
-    Compute Ripley's K-function for a set of 2D points.
-    """
-    points = np.asarray(points)
-    N = len(points)
-    if N < 2:
-        raise ValueError("Need at least 2 points.")
-    
-    if area is None:
-        xmin, ymin = points.min(axis=0)
-        xmax, ymax = points.max(axis=0)
-        area = (xmax - xmin) * (ymax - ymin)
-
-    lambda_density = N / area
-    dists = distance_matrix(points, points)
-    np.fill_diagonal(dists, np.inf)
-
-    K_r = []
-    for r in radii:
-        count = np.sum(dists <= r)
-        K = count / lambda_density
-        K_r.append(K)
-    return np.array(K_r)
-
-def ripley_l_function(points, radii, area=None):
-    """
-    Compute Ripley's L-function from a set of 2D points.
-    """
-    K_r = ripley_k_function(points, radii, area)
-    L_r = np.sqrt(K_r / np.pi) - radii
-    return L_r
-
 
 np.set_printoptions(threshold=sys.maxsize)
 nx = 20
@@ -51,19 +15,11 @@ model = EpsteinCivilViolence(
 )  # cap the number of steps the model takes
 model.run_model()
 model_data = model.datacollector.get_model_vars_dataframe()
-police = model_data["police_location"].values
-citizen = model_data["citizen_location"].values
+police_data = model_data["ripley_l_police"].values
+citizen_data = model_data["ripley_l_citizen"].values
 
-radii = np.linspace(0.1, 10.0, 50)
+radii = model_data["radii"].values[0]
 
-police_data = []
-citizen_data = []
-for i, row in enumerate(zip(police, citizen)):
-    radii = np.linspace(0.1, 10.0, 50)
-    ripley_l_police = ripley_l_function(points=np.array(row[0]), radii=radii, area=nx*ny)
-    ripley_l_citizen = ripley_l_function(points=np.array(row[1]), radii=radii, area=nx*ny)
-    police_data.append(ripley_l_police)
-    citizen_data.append(ripley_l_citizen)
 police_data = np.array(police_data)
 citizen_data = np.array(citizen_data)
 police_mean = np.mean(police_data, axis=0)
