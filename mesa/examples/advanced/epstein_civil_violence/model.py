@@ -83,7 +83,7 @@ class EpsteinCivilViolence(mesa.Model):
                     [cop.cell.coordinate[0], cop.cell.coordinate[1]]
                     for cop in m.agents_by_type[Cop]
                 ],
-                radii=np.linspace(0.1, width/2, 50),
+                radii=m.radii,
                 area=width*height,
             ),
             "ripley_l_citizen": lambda m: m.ripley_l_function(
@@ -91,7 +91,7 @@ class EpsteinCivilViolence(mesa.Model):
                     [cop.cell.coordinate[0], cop.cell.coordinate[1]]
                     for cop in m.agents_by_type[Citizen]
                 ],
-                radii=np.linspace(0.1, width/2, 50),
+                radii=m.radii,
                 area=width*height,
             ),
             "radii": "radii",
