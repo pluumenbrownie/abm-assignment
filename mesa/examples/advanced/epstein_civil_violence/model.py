@@ -125,7 +125,7 @@ class EpsteinCivilViolence(mesa.Model):
             elif klass == Citizen:
                 citizen = Citizen(
                     self,
-                    # regime_legitimacy=self.legitimacy,
+                    regime_legitimacy=self.legitimacy,
                     threshold=active_threshold,
                     vision=citizen_vision,
                     arrest_prob_constant=arrest_prob_constant,

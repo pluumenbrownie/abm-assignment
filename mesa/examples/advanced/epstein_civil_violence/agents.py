@@ -92,6 +92,7 @@ class Citizen(EpsteinAgent):
     def __init__(
         self,
         model,
+        regime_legitimacy,
         threshold,
         vision,
         arrest_prob_constant,
@@ -120,8 +121,8 @@ class Citizen(EpsteinAgent):
         super().__init__(model, random_move)
         self.hardship = self.random.random()
         self.risk_aversion = self.random.random()
-        self.regime_legitimacy = self.random.random()
-        self.original_legitimacy = self.regime_legitimacy
+        self.regime_legitimacy = regime_legitimacy
+        self.original_legitimacy = regime_legitimacy
         self.threshold = threshold
         self.state = CitizenState.QUIET
         self.vision = vision
@@ -148,8 +149,8 @@ class Citizen(EpsteinAgent):
             return  # no other changes or movements if agent is in jail.
 
         self.update_neighbors()
-        self.update_estimated_arrest_probability()
-        self.update_observed_violence()
+        self.update_estimated_arrest_probability_and_observed_violence()
+        #self.update_observed_violence()
         self.move(self.prob_quiet)
 
         net_risk = self.risk_aversion * self.arrest_probability
@@ -158,11 +159,12 @@ class Citizen(EpsteinAgent):
         else:
             self.state = CitizenState.QUIET
 
-    def update_estimated_arrest_probability(self):
+    def update_estimated_arrest_probability_and_observed_violence(self):
         """
         Based on the ratio of cops to actives in my neighborhood, estimate the
         p(Arrest | I go active).
         """
+        arrests_in_vision = 0
         cops_in_vision = 0
         actives_in_vision = 1  # citizen counts herself
         for neighbor in self.neighbors:
@@ -172,6 +174,8 @@ class Citizen(EpsteinAgent):
                 actives_in_vision += (1-self.prob_quiet)
             elif neighbor.state == CitizenState.QUIET:
                 actives_in_vision += self.prob_quiet
+            elif neighbor.state == CitizenState.ARRESTED:
+                arrests_in_vision += 1
 
         # there is a body of literature on this equation
         # the round is not in the pnas paper but without it, its impossible to replicate
@@ -180,34 +184,31 @@ class Citizen(EpsteinAgent):
             -1 * self.arrest_prob_constant * round(cops_in_vision / actives_in_vision)
         )
 
-    def update_observed_violence(self):
-        """
-        Return the number of arrested agents in the neighborhood.
-        """
-        arrests_in_vision = 0
-        for neighbor in self.neighbors:
-            if neighbor.state == CitizenState.ARRESTED:
-                arrests_in_vision += 1
-
+        if self.reversion_rate == 0:
+            return  # No update to legitimacy if agent is completely inflexible, this is for performance reasons
+        
         baseline = self.original_legitimacy
         max_gap = self.max_legitimacy_gap
         alpha = self.reversion_rate
 
         # Minimum allowable legitimacy
         min_legitimacy = baseline * (1 - max_gap)
-        
+
         if arrests_in_vision > 0:
         # Target a drop toward min_legitimacy, proportional to arrests
         # The more arrests, the closer the target is to the floor
-            scaling = 0.1 + (1.0 - self.repression_sensitivity) * 0.9  # ensures >0 division
-            decay_fraction = min(1.0, arrests_in_vision / (scaling * 10))
+            scaling = 1.0 + (1.0 - self.repression_sensitivity) * 4.0
+            decay_fraction = min(0.5, arrests_in_vision / (scaling * 10))
             target = baseline - decay_fraction * (baseline - min_legitimacy)
+
         else:
         # No arrests → recover toward baseline
             target = baseline
 
-    # Exponential approach to target
+        # Exponential approach to target
         self.regime_legitimacy += alpha * (target - self.regime_legitimacy)
+        self.grievance = self.hardship * (1 - self.regime_legitimacy)
+
 
 class Cop(EpsteinAgent):
     """
