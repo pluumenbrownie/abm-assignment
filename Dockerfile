@@ -17,7 +17,7 @@ LABEL maintainer="projectmesa maintainers@projectmesa.dev"
 # `docker run --name mymesa_instance -p 8765:8765 -e MODEL_DIR=/mesa-examples/examples/sugarscape_cg -it mymesa_image`
 # Note: the model directory MUST contain an app.py file.
 
-ENV MODEL_DIR=/opt/mesa/mesa/examples/basic/schelling
+ENV MODEL_DIR=/opt/mesa/mesa/examples/advanced/epstein_civil_violence
 
 # Don't buffer output:
 # https://docs.python.org/3.10/using/cmdline.html?highlight=pythonunbuffered#envvar-PYTHONUNBUFFERED

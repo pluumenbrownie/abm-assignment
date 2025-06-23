@@ -1,4 +1,4 @@
-from mesa.examples.advanced.epstein_civil_violence.agents import (
+from mesa.examples.advanced.epstein_civil_violence.agents_new import (
     Citizen,
     CitizenState,
     Cop,
@@ -57,6 +57,19 @@ model_params = {
     "cop_vision": Slider("Cop Vision", 7, 1, 10, 1),
     "legitimacy": Slider("Government Legitimacy", 0.82, 0.0, 1, 0.01),
     "max_jail_term": Slider("Max Jail Term", 30, 0, 50, 1),
+    "rebel_reduction": Slider("Rebel Reduction", 0.1, 0.0, 1.0, 0.01),
+    "rebel_increase": Slider("Rebel Increase", 1.0, 0.0, 100.0, 0.1),
+    "lamb": Slider("Logit Hyperparameter (λ)", 1.0, 0.0, 10.0, 0.1),
+    "random_move_agent": {
+        "type": "Checkbox",
+        "value": False,
+        "label": "Random Move Citizens",
+    },
+    "random_move_police": {
+        "type": "Checkbox",
+        "value": False,
+        "label": "Random Move Police",
+    },
 }
 
 space_component = make_space_component(

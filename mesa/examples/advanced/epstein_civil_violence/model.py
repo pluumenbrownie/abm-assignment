@@ -1,9 +1,20 @@
-import mesa
-from mesa.examples.advanced.epstein_civil_violence.agents import (
+# ruff: noqa: N809
+
+import numpy as np
+
+# from mesa.examples.advanced.epstein_civil_violence.agents_new import (
+#     Citizen,
+#     CitizenState,
+#     Cop,
+# )
+from agents import (
     Citizen,
     CitizenState,
     Cop,
 )
+from scipy.spatial import distance_matrix
+
+import mesa
 
 
 class EpsteinCivilViolence(mesa.Model):
@@ -49,24 +60,56 @@ class EpsteinCivilViolence(mesa.Model):
         max_iters=1000,
         enable_agent_reporters=False,
         seed=None,
+        random_move_agent=False,
+        prob_quiet=0.1,
+        reversion_rate=0.05,
+        max_legitimacy_gap=0.5,
+        repression_sensitivity=0.5,
     ):
         super().__init__(seed=seed)
         self.movement = movement
         self.max_iters = max_iters
 
+        self.legitimacy = legitimacy
+        self.reversion_rate = reversion_rate
+        self.max_legitimacy_gap = max_legitimacy_gap
+        self.repression_sensitivity = repression_sensitivity
+
         self.grid = mesa.discrete_space.OrthogonalVonNeumannGrid(
             (width, height), capacity=1, torus=True, random=self.random
         )
 
+        self.radii = np.linspace(0.1, width / 2, 50)
         model_reporters = {
             "active": CitizenState.ACTIVE.name,
             "quiet": CitizenState.QUIET.name,
             "arrested": CitizenState.ARRESTED.name,
+            "ripley_l_police": lambda m: m.ripley_l_function(
+                points=[
+                    [cop.cell.coordinate[0], cop.cell.coordinate[1]]
+                    for cop in m.agents_by_type[Cop]
+                ],
+                radii=m.radii,
+                area=width * height,
+            ),
+            "ripley_l_citizen": lambda m: m.ripley_l_function(
+                points=[
+                    [cop.cell.coordinate[0], cop.cell.coordinate[1]]
+                    for cop in m.agents_by_type[Citizen]
+                ],
+                radii=m.radii,
+                area=width * height,
+            ),
+            "radii": "radii",
         }
         if enable_agent_reporters:
             agent_reporters = {
                 "jail_sentence": lambda a: getattr(a, "jail_sentence", None),
                 "arrest_probability": lambda a: getattr(a, "arrest_probability", None),
+                "regime_legitimacy": lambda a: getattr(a, "regime_legitimacy", None),
+                "repression_sensitivity": lambda a: getattr(
+                    a, "repression_sensitivity", None
+                ),
             }
         else:
             agent_reporters = None
@@ -83,21 +126,64 @@ class EpsteinCivilViolence(mesa.Model):
             )[0]
 
             if klass == Cop:
-                cop = Cop(self, vision=cop_vision, max_jail_term=max_jail_term)
+                cop = Cop(
+                    self,
+                    vision=cop_vision,
+                    max_jail_term=max_jail_term,
+                    prob_quiet=prob_quiet,
+                )
                 cop.move_to(cell)
             elif klass == Citizen:
                 citizen = Citizen(
                     self,
-                    regime_legitimacy=legitimacy,
+                    regime_legitimacy=self.legitimacy,
                     threshold=active_threshold,
                     vision=citizen_vision,
                     arrest_prob_constant=arrest_prob_constant,
+                    random_move=random_move_agent,
+                    prob_quiet=prob_quiet,
+                    reversion_rate=self.reversion_rate,
+                    max_legitimacy_gap=self.max_legitimacy_gap,
+                    repression_sensitivity=self.repression_sensitivity,
                 )
                 citizen.move_to(cell)
 
         self.running = True
         self._update_counts()
         self.datacollector.collect(self)
+
+    def ripley_k_function(self, points, radii, area=None):
+        """
+        Compute Ripley's K-function for a set of 2D points.
+        """
+        points = np.asarray(points)
+        N = len(points)
+        if N < 2:
+            raise ValueError("Need at least 2 points.")
+
+        if area is None:
+            xmin, ymin = points.min(axis=0)
+            xmax, ymax = points.max(axis=0)
+            area = (xmax - xmin) * (ymax - ymin)
+
+        lambda_density = N / area
+        dists = distance_matrix(points, points)
+        np.fill_diagonal(dists, np.inf)
+
+        K_r = []
+        for r in radii:
+            count = np.sum(dists <= r)
+            K = count / lambda_density
+            K_r.append(K)
+        return np.array(K_r)
+
+    def ripley_l_function(self, points, radii, area=None):
+        """
+        Compute Ripley's L-function from a set of 2D points.
+        """
+        K_r = self.ripley_k_function(points, radii, area)
+        L_r = np.sqrt(K_r / np.pi) - radii
+        return L_r
 
     def step(self):
         """
