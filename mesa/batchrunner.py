@@ -42,6 +42,65 @@ from mesa.model import Model
 multiprocessing.set_start_method("spawn", force=True)
 
 
+def batch_run_not_stupid(
+    model_cls: type[Model],
+    parameters: Mapping[str, Any | Iterable[Any]],
+    # We still retain the Optional[int] because users may set it to None (i.e. use all CPUs)
+    number_processes: int | None = 1,
+    iterations: int = 1,
+    data_collection_period: int = -1,
+    max_steps: int = 1000,
+    display_progress: bool = True,
+) -> list[dict[str, Any]]:
+    """Batch run a mesa model with a set of parameter values.
+
+    Args:
+        model_cls (Type[Model]): The model class to batch-run
+        parameters (Mapping[str, Union[Any, Iterable[Any]]]): Dictionary with model parameters over which to run the model. You can either pass single values or iterables.
+        number_processes (int, optional): Number of processes used, by default 1. Set this to None if you want to use all CPUs.
+        iterations (int, optional): Number of iterations for each parameter combination, by default 1
+        data_collection_period (int, optional): Number of steps after which data gets collected, by default -1 (end of episode)
+        max_steps (int, optional): Maximum number of model steps after which the model halts, by default 1000
+        display_progress (bool, optional): Display batch run process, by default True
+
+    Returns:
+        List[Dict[str, Any]]
+
+    Notes:
+        batch_run assumes the model has a `datacollector` attribute that has a DataCollector object initialized.
+
+    """
+    runs_list = []
+    run_id = 0
+    for iteration in range(iterations):
+        for _, params in parameters.iterrows():
+            runs_list.append((run_id, iteration, params))
+            run_id += 1
+
+    process_func = partial(
+        _model_run_func,
+        model_cls,
+        max_steps=max_steps,
+        data_collection_period=data_collection_period,
+    )
+
+    results: list[dict[str, Any]] = []
+
+    with tqdm(total=len(runs_list), disable=not display_progress) as pbar:
+        if number_processes == 1:
+            for run in runs_list:
+                data = process_func(run)
+                results.extend(data)
+                pbar.update()
+        else:
+            with Pool(number_processes) as p:
+                for data in p.imap_unordered(process_func, runs_list):
+                    results.extend(data)
+                    pbar.update()
+
+    return results
+
+
 def batch_run(
     model_cls: type[Model],
     parameters: Mapping[str, Any | Iterable[Any]],
