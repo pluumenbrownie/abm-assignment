@@ -47,6 +47,7 @@ class EpsteinCivilViolence(mesa.Model):
         arrest_prob_constant=2.3,
         movement=True,
         max_iters=1000,
+        enable_agent_reporters=False,
         seed=None,
     ):
         super().__init__(seed=seed)
@@ -62,10 +63,13 @@ class EpsteinCivilViolence(mesa.Model):
             "quiet": CitizenState.QUIET.name,
             "arrested": CitizenState.ARRESTED.name,
         }
-        agent_reporters = {
-            "jail_sentence": lambda a: getattr(a, "jail_sentence", None),
-            "arrest_probability": lambda a: getattr(a, "arrest_probability", None),
-        }
+        if enable_agent_reporters:
+            agent_reporters = {
+                "jail_sentence": lambda a: getattr(a, "jail_sentence", None),
+                "arrest_probability": lambda a: getattr(a, "arrest_probability", None),
+            }
+        else:
+            agent_reporters = None
         self.datacollector = mesa.DataCollector(
             model_reporters=model_reporters, agent_reporters=agent_reporters
         )
