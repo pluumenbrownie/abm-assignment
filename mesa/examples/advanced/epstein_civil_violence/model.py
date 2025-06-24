@@ -1,20 +1,20 @@
 # ruff: noqa: N809
 
 import numpy as np
+from scipy.spatial import distance_matrix
+
+import mesa
 
 # from mesa.examples.advanced.epstein_civil_violence.agents_new import (
 #     Citizen,
 #     CitizenState,
 #     Cop,
 # )
-from agents import (
+from mesa.examples.advanced.epstein_civil_violence.agents import (
     Citizen,
     CitizenState,
     Cop,
 )
-from scipy.spatial import distance_matrix
-
-import mesa
 
 
 class EpsteinCivilViolence(mesa.Model):
@@ -100,7 +100,6 @@ class EpsteinCivilViolence(mesa.Model):
                 radii=m.radii,
                 area=width * height,
             ),
-            "radii": "radii",
         }
         if enable_agent_reporters:
             agent_reporters = {
