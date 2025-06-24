@@ -84,22 +84,22 @@ class EpsteinCivilViolence(mesa.Model):
             "active": CitizenState.ACTIVE.name,
             "quiet": CitizenState.QUIET.name,
             "arrested": CitizenState.ARRESTED.name,
-            "ripley_l_police": lambda m: m.ripley_l_function(
-                points=[
-                    [cop.cell.coordinate[0], cop.cell.coordinate[1]]
-                    for cop in m.agents_by_type[Cop]
-                ],
-                radii=m.radii,
-                area=width * height,
-            ),
-            "ripley_l_citizen": lambda m: m.ripley_l_function(
-                points=[
-                    [cop.cell.coordinate[0], cop.cell.coordinate[1]]
-                    for cop in m.agents_by_type[Citizen]
-                ],
-                radii=m.radii,
-                area=width * height,
-            ),
+            # "ripley_l_police": lambda m: m.ripley_l_function(
+            #     points=[
+            #         [cop.cell.coordinate[0], cop.cell.coordinate[1]]
+            #         for cop in m.agents_by_type[Cop]
+            #     ],
+            #     radii=m.radii,
+            #     area=width * height,
+            # ),
+            # "ripley_l_citizen": lambda m: m.ripley_l_function(
+            #     points=[
+            #         [cop.cell.coordinate[0], cop.cell.coordinate[1]]
+            #         for cop in m.agents_by_type[Citizen]
+            #     ],
+            #     radii=m.radii,
+            #     area=width * height,
+            # ),
         }
         if enable_agent_reporters:
             agent_reporters = {
