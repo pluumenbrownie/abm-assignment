@@ -1,3 +1,3 @@
-replicates = 10
+replicates = 1
 max_steps = 100
-distinct_samples = 256
+distinct_samples = 512
