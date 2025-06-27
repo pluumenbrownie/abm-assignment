@@ -57,7 +57,7 @@ def batch_run_not_stupid(
 
     Args:
         model_cls (Type[Model]): The model class to batch-run
-        parameters (Mapping[str, Union[Any, Iterable[Any]]]): Dictionary with model parameters over which to run the model. You can either pass single values or iterables.
+        parameters (Dataframe): A `pandas.DataFrame` with model parameters over which to run the model.
         number_processes (int, optional): Number of processes used, by default 1. Set this to None if you want to use all CPUs.
         iterations (int, optional): Number of iterations for each parameter combination, by default 1
         data_collection_period (int, optional): Number of steps after which data gets collected, by default -1 (end of episode)
@@ -103,14 +103,28 @@ def batch_run_not_stupid(
 
 
 def _inner_not_stupid(
-    model_cls,
-    number_processes,
-    data_collection_period,
-    max_steps,
-    pbar,
-    runs_list,
+    model_cls: type[Model],
+    number_processes: int | None,
+    data_collection_period: int,
+    max_steps: int,
+    pbar: tqdm,
+    runs_list: list[tuple[int, int, dict[str, Any]]],
 ):
-    """I hope splitting this solves the memory leak."""
+    """I hope splitting this solves the memory leak.
+
+    Args:
+        model_cls (Type[Model]): The model class to batch-run
+        number_processes (int, optional): Number of processes used, by default
+            1. Set this to None if you want to use all CPUs.
+        data_collection_period (int, optional): Number of steps after which
+            data gets collected, by default -1 (end of episode)
+        max_steps (int, optional): Maximum number of model steps after which
+            the model halts, by default 1000
+        pbar: a tqdm progress bar
+        runs_list: a list of tuples containing the a number for the current run,
+            a number for the current iteration, and a dictionary containing the
+            parameters for a given run.
+    """
     process_func = partial(
         _model_run_func,
         model_cls,
