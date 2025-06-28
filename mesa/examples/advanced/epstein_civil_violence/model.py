@@ -42,6 +42,8 @@ class EpsteinCivilViolence(mesa.Model):
         movement: binary, whether agents try to move at step end
         max_iters: model may not have a natural stopping point, so we set a
             max.
+        enable_agent_reporters: binary, whether agent reporters are enabled in
+            the datacollector. Default disabled for performance reasons.
     """
 
     def __init__(
@@ -84,10 +86,14 @@ class EpsteinCivilViolence(mesa.Model):
             "active": CitizenState.ACTIVE.name,
             "quiet": CitizenState.QUIET.name,
             "arrested": CitizenState.ARRESTED.name,
-            "citizen": lambda m: [[citizen.cell.coordinate[0], citizen.cell.coordinate[1]]
-            for citizen in m.agents_by_type[Citizen]],
-            "police": lambda m: [[cop.cell.coordinate[0], cop.cell.coordinate[1]]
-            for cop in m.agents_by_type[Cop]],
+            "citizen": lambda m: [
+                [citizen.cell.coordinate[0], citizen.cell.coordinate[1]]
+                for citizen in m.agents_by_type[Citizen]
+            ],
+            "police": lambda m: [
+                [cop.cell.coordinate[0], cop.cell.coordinate[1]]
+                for cop in m.agents_by_type[Cop]
+            ],
         }
         if enable_agent_reporters:
             agent_reporters = {
