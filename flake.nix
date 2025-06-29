@@ -18,6 +18,7 @@
     devShells.${system}.default = pkgs.mkShell {
       nativeBuildInputs = with pkgs; [
         uv
+        pre-commit
       ];
     };
 
