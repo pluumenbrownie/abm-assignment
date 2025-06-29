@@ -60,6 +60,7 @@ def plot_index(s, params, i, title=''):
     plt.yticks(range(l), params)
     plt.errorbar(indices, range(l), xerr=errors, linestyle='None', marker='o')
     plt.axvline(0, c='k')
+    plt.tight_layout()
 
 def SA():
     problem = {
@@ -68,35 +69,38 @@ def SA():
         'bounds': [[0.1, 1.0], [0.0, 0.9], [0.0, 1.0], [0.0, 0.5]]
     }
     files = ["0002_data_0000.csv", "0002_data_0001.csv", "0002_data_0002.csv"]
-    x_values = [20, 10]
-    for x in x_values:
-        data = merge(files, load_x(x))
-        Si_police = sobol.analyze(problem, data["police"].values, print_to_console=True)
-        Si_citizen = sobol.analyze(problem, data["citizen"].values, print_to_console=True)
-        i = 0
-        # First order
-        plot_index(Si_police, problem['names'], '1', 'First order sensitivity')
-        plt.savefig(f"./img/first_order_{i}_{x}_police.pdf")
+    data = merge(files, load_x(20))
+    Si_police = sobol.analyze(problem, data["police"].values, print_to_console=True)
+    Si_citizen = sobol.analyze(problem, data["citizen"].values, print_to_console=True)
+    # First order
+    plot_index(Si_police, problem['names'], '1', 'First order sensitivity')
+    plt.savefig(f"./img/first_order_police.pdf")
+    plt.clf()
 
-        # Second order
-        plot_index(Si_police, problem['names'], '2', 'Second order sensitivity')
-        plt.savefig(f"./img/second_order_{i}_{x}_police.pdf")
+    # Second order
+    plot_index(Si_police, problem['names'], '2', 'Second order sensitivity')
+    plt.savefig(f"./img/second_order_police.pdf")
+    plt.clf()
 
-        # Total order
-        plot_index(Si_police, problem['names'], 'T', 'Total order sensitivity')
-        plt.savefig(f"./img/total_order_{i}_{x}_police.pdf")
+    # Total order
+    plot_index(Si_police, problem['names'], 'T', 'Total order sensitivity')
+    plt.savefig(f"./img/total_order_police.pdf")
+    plt.clf()
 
-        # First order
-        plot_index(Si_citizen, problem['names'], '1', 'First order sensitivity')
-        plt.savefig(f"./img/first_order_{i}_{x}_citizen.pdf")
+    # First order
+    plot_index(Si_citizen, problem['names'], '1', 'First order sensitivity')
+    plt.savefig(f"./img/first_order_citizen.pdf")
+    plt.clf()
 
-        # Second order
-        plot_index(Si_citizen, problem['names'], '2', 'Second order sensitivity')
-        plt.savefig(f"./img/second_order_{i}_{x}_citizen.pdf")
+    # Second order
+    plot_index(Si_citizen, problem['names'], '2', 'Second order sensitivity')
+    plt.savefig(f"./img/second_order_citizen.pdf")
+    plt.clf()
 
-        # Total order
-        plot_index(Si_citizen, problem['names'], 'T', 'Total order sensitivity')
-        plt.savefig(f"./img/total_order_{i}_{x}_citizen.pdf")
+    # Total order
+    plot_index(Si_citizen, problem['names'], 'T', 'Total order sensitivity')
+    plt.savefig(f"./img/total_order_citizen.pdf")
+    plt.clf()
 
 def get_10_90_percentiles(data):
     k10 = np.zeros(len(data[0]))
@@ -109,17 +113,8 @@ def get_10_90_percentiles(data):
 
 def plot_agents(data, title, filename, column_source, columns, k10, k90, radii):
     plots = []
-    over = []
-    under = []
-    same = []
     for name, group in data:
         mean = np.mean(group[column_source].to_list(), axis=0)
-        if mean[-1] > k90[-1]:
-            over.append(list(name))
-        elif mean[-1] < k10[-1]:
-            under.append(list(name))
-        else:
-            same.append(list(name))
         p = plt.errorbar(
             radii,
             mean,
@@ -147,18 +142,6 @@ def plot_agents(data, title, filename, column_source, columns, k10, k90, radii):
     plt.grid()
     plt.savefig(f"./img/{filename}.pdf")
     plt.clf()
-    if len(same) != 0:
-        plt.boxplot(transpose(same), tick_labels=["legitimacy", "active_threshold", "reversion_rate", "prob_quiet"])
-        plt.savefig(f"./img/same_{column_source}.pdf")
-        plt.clf()
-    if len(over) != 0:
-        plt.boxplot(transpose(over), tick_labels=["legitimacy", "active_threshold", "reversion_rate", "prob_quiet"])
-        plt.savefig(f"./img/over_{column_source}.pdf")
-        plt.clf()
-    if len(under) != 0:
-        plt.boxplot(transpose(under), tick_labels=["legitimacy", "active_threshold", "reversion_rate", "prob_quiet"])
-        plt.savefig(f"./img/under_{column_source}.pdf")
-        plt.clf()
 
 def plot():
     radii = np.linspace(0.1, 40 / 2, 50)
@@ -176,80 +159,9 @@ def plot():
 
     plot_agents(d, "Ripley's L-function for Citizen", "ripley_l_function_citizen", "citizen", ["Citizen", "Baseline"], k10_citizen, k90_citizen, radii)
     plot_agents(d, "Ripley's L-function for Police", "ripley_l_function_police", "police", ["Police", "Baseline"], k10_police, k90_police, radii)
-    # police = []
-    # citizen = []
-    # over = []
-    # under = []
-    # same = []
-    # for name, group in d:
-    #     police_mean = np.mean(group["police"].to_list(), axis=0)
-    #     citizen_mean = np.mean(group["citizen"].to_list(), axis=0)
-    #     if citizen_mean[-1] > k90_citizen[-1]:
-    #         over.append(list(name))
-    #     elif citizen_mean[-1] < k10_citizen[-1]:
-    #         under.append(list(name))
-    #     else:
-    #         same.append(list(name))
-    #     p = plt.errorbar(
-    #         radii,
-    #         police_mean,
-    #         #yerr=police_std,
-    #         #label=f"Police L-function {name}",
-    #         fmt="-o",
-    #         capsize=5,
-    #         color="red",
-    #         zorder=0
-    #     )
-    #     police.append(p)
-    #     c = plt.errorbar(
-    #         radii,
-    #         citizen_mean,
-    #         #yerr=citizen_std,
-    #         #label=f"Citizen L-function{name}",
-    #         fmt="-o",
-    #         capsize=5,
-    #         color="blue",
-    #         zorder=1
-    #     )
-    #     citizen.append(c)
-    # police_fill = plt.fill_between(
-    #     radii,
-    #     k10_police,
-    #     k90_police,
-    #     color="purple",
-    #     alpha=0.6,
-    #     label="Police 10-90% range",
-    #     zorder=5
-    # )
-    
-    # citizen_fill = plt.fill_between(
-    #     radii,
-    #     k10_citizen,
-    #     k90_citizen,
-    #     color="green",
-    #     alpha=0.6,
-    #     label="Citizen 10-90% range",
-    #     zorder=6
-    # )
-    # plt.xlabel("Radius")
-    # plt.ylabel("Ripley's L-function")
-    # plt.title(f"Ripley's L-function")
-    # plt.legend([tuple(police), tuple(citizen), police_fill, citizen_fill], ["Police", "Citizen", "Police 10-90% range", "Citizen 10-90% range"], handler_map={tuple: HandlerTuple(ndivide=None)})
-    # plt.grid()
-    # plt.savefig(f"./img/ripley_l_function_mean_std.pdf")
-    # plt.clf()
-    # print("Under:", under)
-    # plt.boxplot(transpose(same), tick_labels=["legitimacy", "active_threshold", "reversion_rate", "prob_quiet"])
-    # plt.savefig(f"./img/same.pdf")
-    # plt.clf()
-    # plt.boxplot(transpose(over), tick_labels=["legitimacy", "active_threshold", "reversion_rate", "prob_quiet"])
-    # plt.savefig(f"./img/over.pdf")
-    # plt.clf()
-    # plt.boxplot(transpose(under), tick_labels=["legitimacy", "active_threshold", "reversion_rate", "prob_quiet"])
-    # plt.savefig(f"./img/under.pdf")
-    # plt.clf()
 
 def transpose(list_of_lists):
     return [list(x) for x in zip(*list_of_lists)]
 
+SA()
 plot()
