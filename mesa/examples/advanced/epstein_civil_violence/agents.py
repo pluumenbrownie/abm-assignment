@@ -252,8 +252,10 @@ class Cop(EpsteinAgent):
 
     def step(self):
         """
-        Inspect local vision and arrest a random active agent. Move if
-        applicable.
+        Inspect local vision and arrest citizen if an active citizen is nearby.
+        Arest a random quiet citizen with probability `self.quiet_prob`, else arrest
+        a random active agent.
+        Move if applicable.
         """
         self.update_neighbors()
 

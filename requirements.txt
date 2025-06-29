@@ -1,0 +1,11 @@
+mesa
+solara
+altair
+matplotlob
+networkx
+SALib
+pandas
+tqdm
+scipy
+jupyter
+ipython
