@@ -7,14 +7,57 @@ from itertools import combinations
 from matplotlib.legend_handler import HandlerTuple
 
 def load_base(series):
+    """
+    Load a series of data from a JSON string into a numpy array.
+    
+    Parameters
+    ----------
+    series : str
+        A JSON string representing a list of agent coordinates in the form of
+        `[[x1, y1], [x2, y2], ...]`.
+    
+    Returns
+    -------
+    np.ndarray
+        A numpy array of the agent coordinates.
+    """
     return np.array(json.loads(series))
 
 def load_x(x=-1):
+    """
+    Load a specific index from a JSON string in a pandas series.
+    
+    Parameters
+    ----------
+    x : int, optional
+        The index of the value to extract from the JSON string. Defaults to -1,
+        which retrieves the last element.
+    
+    Returns
+    -------
+    function
+        A function that takes a pandas series and returns the value at index x
+        from the JSON string.
+    """
     def load(series):
         return json.loads(series)[x]
     return load
 
 def merge(files, load):
+    """
+    Merge multiple CSV files into a single DataFrame, applying a loading function
+    to specific columns.
+    Parameters
+    ----------
+        files : list
+            List of CSV filenames to merge.
+        load : function
+            Function to apply to the 'police' and 'citizen' columns.
+    Returns
+    -------
+        pd.DataFrame : dataframe
+            A DataFrame containing the merged data with the specified columns processed.
+    """
     files = ["0002_data_0000.csv", "0002_data_0001.csv", "0002_data_0002.csv"]
     all_data_list = []
     for file in files:
@@ -63,6 +106,10 @@ def plot_index(s, params, i, title=''):
     plt.tight_layout()
 
 def SA():
+    """ Perform a global sensitivity analysis using Sobol's method on the Epstein Civil Violence model.
+    This function sets up the problem parameters, loads the data from CSV files,
+    and computes the sensitivity indices for both police and citizen agents.
+    It then generates plots for first-order, second-order, and total order sensitivity indices."""
     problem = {
         'num_vars': 4,
         'names': ['legitimacy', 'active_threshold', 'reversion_rate', 'prob_quiet'],
@@ -103,6 +150,20 @@ def SA():
     plt.clf()
 
 def get_10_90_percentiles(data):
+    """
+    Calculate the 10th and 90th percentiles for each column in the data.
+    
+    Parameters
+    ----------
+    data : np.ndarray
+        A 2D numpy array where each column represents a different set of data points.
+    Returns
+    -------
+    k10 : np.ndarray
+        A 1D numpy array containing the 10th percentiles for each column.
+    k90 : np.ndarray
+        A 1D numpy array containing the 90th percentiles for each column.
+    """
     k10 = np.zeros(len(data[0]))
     k90 = np.zeros(len(data[0]))
     for i in range(len(data[0])):
@@ -112,6 +173,28 @@ def get_10_90_percentiles(data):
     return k10, k90
 
 def plot_agents(data, title, filename, column_source, columns, k10, k90, radii):
+    """
+    Plot Ripley's L-function for a given set of agents.
+    
+    Parameters
+    ----------
+    data : pd.DataFrame
+        A DataFrame containing the agent data grouped by parameters.
+    title : str
+        The title of the plot.
+    filename : str
+        The filename to save the plot as.
+    column_source : str
+        The column name in the DataFrame that contains the agent coordinates.
+    columns : list
+        A list of column names to be used in the legend.
+    k10 : np.ndarray
+        A 1D numpy array containing the 10th percentiles for each radius.
+    k90 : np.ndarray
+        A 1D numpy array containing the 90th percentiles for each radius.
+    radii : np.ndarray
+        A 1D numpy array of radii at which the L-function is computed.
+    """
     plots = []
     for name, group in data:
         mean = np.mean(group[column_source].to_list(), axis=0)
@@ -144,8 +227,14 @@ def plot_agents(data, title, filename, column_source, columns, k10, k90, radii):
     plt.clf()
 
 def plot():
+    """
+    Plot Ripley's L-function for citizen and police agents based on the data
+    collected from multiple CSV files. This function merges the data, computes
+    the 10th and 90th percentiles, and generates plots for both citizen and
+    police agents, saving them as PDF files.
+    """
     radii = np.linspace(0.1, 40 / 2, 50)
-    files = ["0002_data_0000.csv", "0002_data_0001.csv", "0002_data_0002.csv"]
+    files = ["0002_data_0000_0.csv", "0002_data_0000_1.csv", "0002_data_0001_0.csv", "0002_data_0001_1.csv", "0002_data_0002.csv"]
     data = merge(files, load_base)
     d = data.groupby(["legitimacy","active_threshold","reversion_rate","prob_quiet"])
     base_citizen = []
@@ -161,6 +250,20 @@ def plot():
     plot_agents(d, "Ripley's L-function for Police", "ripley_l_function_police", "police", ["Police", "Baseline"], k10_police, k90_police, radii)
 
 def transpose(list_of_lists):
+    """
+    Transpose a list of lists.
+    
+    Parameters
+    ----------
+    list_of_lists : list of lists
+        A list where each element is a list of the same length.
+    
+    Returns
+    -------
+    list of lists
+        A transposed version of the input list, where each sublist contains
+        elements from the same index across all sublists.
+    """
     return [list(x) for x in zip(*list_of_lists)]
 
 SA()
