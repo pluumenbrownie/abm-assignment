@@ -64,9 +64,9 @@ class EpsteinCivilViolence(mesa.Model):
         seed=None,
         random_move_agent=False,
         prob_quiet=0.1,
-        reversion_rate=0.05,
-        max_legitimacy_gap=0.5,
-        repression_sensitivity=0.5,
+        reversion_rate=0.05, # rate at which legitimacy returns to baseline
+        max_legitimacy_gap=0.5, # how much we allow legitimacy to drop
+        repression_sensitivity=0.5, # 1 very resilient, 0 very sensitive	
     ):
         super().__init__(seed=seed)
         self.movement = movement

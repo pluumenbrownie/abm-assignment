@@ -129,7 +129,7 @@ class Citizen(EpsteinAgent):
         self.hardship = self.random.random()
         self.risk_aversion = self.random.random()
         self.regime_legitimacy = regime_legitimacy
-        self.original_legitimacy = regime_legitimacy
+        self.original_legitimacy = regime_legitimacy #track original legitimacy for reversion
         self.threshold = threshold
         self.state = CitizenState.QUIET
         self.vision = vision
@@ -177,7 +177,7 @@ class Citizen(EpsteinAgent):
         Based on the ratio of cops to actives in my neighborhood, estimate the
         p(Arrest | I go active).
         """
-        arrests_in_vision = 0
+        arrests_in_vision = 0 # track arrests in vision
         cops_in_vision = 0
         actives_in_vision = 1  # citizen counts herself
         for neighbor in self.neighbors:
@@ -187,7 +187,7 @@ class Citizen(EpsteinAgent):
                 actives_in_vision += 1 - self.prob_quiet
             elif neighbor.state == CitizenState.QUIET:
                 actives_in_vision += self.prob_quiet
-            elif neighbor.state == CitizenState.ARRESTED:
+            elif neighbor.state == CitizenState.ARRESTED: # count arrests in vision
                 arrests_in_vision += 1
 
         # there is a body of literature on this equation
@@ -204,15 +204,15 @@ class Citizen(EpsteinAgent):
         max_gap = self.max_legitimacy_gap
         alpha = self.reversion_rate
 
-        # Minimum allowable legitimacy
+        # Minimum allowable legitimacy, i.e., the floor
         min_legitimacy = baseline * (1 - max_gap)
 
         if arrests_in_vision > 0:
             # Target a drop toward min_legitimacy, proportional to arrests
             # The more arrests, the closer the target is to the floor
-            scaling = 1.0 + (1.0 - self.repression_sensitivity) * 4.0
-            decay_fraction = min(0.5, arrests_in_vision / (scaling * 10))
-            target = baseline - decay_fraction * (baseline - min_legitimacy)
+            scaling = 1.0 + (1.0 - self.repression_sensitivity) * 4.0 #scaling factor for arrests
+            decay_fraction = min(0.5, arrests_in_vision / (scaling * 10)) # decay fraction is capped at 0.5 to avoid too much drop
+            target = baseline - decay_fraction * (baseline - min_legitimacy) # target legitimacy based on arrests
 
         else:
             # No arrests → recover toward baseline
@@ -220,7 +220,7 @@ class Citizen(EpsteinAgent):
 
         # Exponential approach to target
         self.regime_legitimacy += alpha * (target - self.regime_legitimacy)
-        self.grievance = self.hardship * (1 - self.regime_legitimacy)
+        self.grievance = self.hardship * (1 - self.regime_legitimacy) # update grievance based on new legitimacy
 
 
 class Cop(EpsteinAgent):
