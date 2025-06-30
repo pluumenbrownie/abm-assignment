@@ -2,9 +2,12 @@ import pandas as pd
 import json
 import numpy as np
 from SALib.analyze import sobol
+from SALib.util.results import ResultDict
 import matplotlib.pyplot as plt
 from itertools import combinations
 from matplotlib.legend_handler import HandlerTuple
+
+files = ["0002_data_0000_0.csv", "0002_data_0000_1.csv", "0002_data_0001_0.csv", "0002_data_0001_1.csv", "0002_data_0002.csv"]
 
 def load_base(series):
     """
@@ -58,7 +61,6 @@ def merge(files, load):
         pd.DataFrame : dataframe
             A DataFrame containing the merged data with the specified columns processed.
     """
-    files = ["0002_data_0000.csv", "0002_data_0001.csv", "0002_data_0002.csv"]
     all_data_list = []
     for file in files:
         filename = f"./processed/{file}"
@@ -70,6 +72,81 @@ def merge(files, load):
     all_data = all_data.drop("Unnamed: 0", axis=1)
     all_data = all_data.drop("Unnamed: 0.1", axis=1)
     return all_data
+
+def plot_all_indices(analyses: dict[str, ResultDict], params, title=""):
+    """
+    Creates a plot for Sobol sensitivity analysis that shows the contributions
+    of each parameter to the global sensitivity.
+
+    Args:
+        analyses (dict[str, ResultDict]): dictionary mapping the name of the analysis to
+            dictionaries {'S#': dict, 'S#_conf': dict} of dicts that hold
+            the values for a set of parameters
+        params (list): the names of the parameters in the analyses
+        title (str): title for the plot
+    """
+    single_names = params
+    second_names = [f"{x}+\n{y}" for x, y in combinations(params, 2)]
+
+    fig, axes = plt.subplots(1, 3, figsize=(10, 3), layout="compressed")
+
+    for nr, analysis in enumerate(analyses.items()):
+        name, s = analysis
+        for i in ["1", "2", "T"]:
+            # first order
+            if i == "1":
+                indices = s["S" + i]
+                errors = s["S" + i + "_conf"]
+                axes[0].errorbar(
+                    indices,
+                    np.arange(len(indices)) + nr * 0.1,
+                    xerr=errors,
+                    linestyle="None",
+                    marker="o",
+                    label=name,
+                )
+            # second order
+            elif i == "2":
+                flattened = s["S" + i].flatten()
+                indices = flattened[~np.isnan(flattened)]
+
+                flattened = s["S" + i + "_conf"].flatten()
+                errors = flattened[~np.isnan(flattened)]
+                axes[1].errorbar(
+                    indices,
+                    np.arange(len(indices)) + nr * 0.1,
+                    xerr=errors,
+                    linestyle="None",
+                    marker="o",
+                    label=name,
+                )
+            # total order
+            else:
+                indices = s["S" + i]
+                errors = s["S" + i + "_conf"]
+                axes[2].errorbar(
+                    indices,
+                    np.arange(len(indices)) + nr * 0.1,
+                    xerr=errors,
+                    linestyle="None",
+                    marker="o",
+                    label=name,
+                )
+
+    axes[0].set_yticks(range(len(single_names)), single_names, size=9)
+    axes[1].set_yticks(range(len(second_names)), second_names, size=9)
+    axes[2].set_yticks(range(len(single_names)), single_names, size=9)
+
+    axes[0].axvline(0, c="k")
+    axes[1].axvline(0, c="k")
+    axes[2].axvline(0, c="k")
+
+    axes[0].set_title("First order sensitivity")
+    axes[1].set_title("Second order sensitivity")
+    axes[2].set_title("Total order sensitivity")
+
+    axes[2].legend()
+    fig.suptitle(title)
 
 def plot_index(s, params, i, title=''):
     """
@@ -115,39 +192,46 @@ def SA():
         'names': ['legitimacy', 'active_threshold', 'reversion_rate', 'prob_quiet'],
         'bounds': [[0.1, 1.0], [0.0, 0.9], [0.0, 1.0], [0.0, 0.5]]
     }
-    files = ["0002_data_0000.csv", "0002_data_0001.csv", "0002_data_0002.csv"]
     data = merge(files, load_x(20))
     Si_police = sobol.analyze(problem, data["police"].values, print_to_console=True)
     Si_citizen = sobol.analyze(problem, data["citizen"].values, print_to_console=True)
-    # First order
-    plot_index(Si_police, problem['names'], '1', 'First order sensitivity')
-    plt.savefig(f"./img/first_order_police.pdf")
-    plt.clf()
 
-    # Second order
-    plot_index(Si_police, problem['names'], '2', 'Second order sensitivity')
-    plt.savefig(f"./img/second_order_police.pdf")
+    plot_all_indices(
+        {"Police": Si_police, "Citizen": Si_citizen},
+        problem["names"],
+        "Global sensitivity analysis",
+    )
+    plt.savefig(f"./img/global_sensitivity_analysis.pdf")
     plt.clf()
+    # # First order
+    # plot_index(Si_police, problem['names'], '1', 'First order sensitivity')
+    # plt.savefig(f"./img/first_order_police.pdf")
+    # plt.clf()
 
-    # Total order
-    plot_index(Si_police, problem['names'], 'T', 'Total order sensitivity')
-    plt.savefig(f"./img/total_order_police.pdf")
-    plt.clf()
+    # # Second order
+    # plot_index(Si_police, problem['names'], '2', 'Second order sensitivity')
+    # plt.savefig(f"./img/second_order_police.pdf")
+    # plt.clf()
 
-    # First order
-    plot_index(Si_citizen, problem['names'], '1', 'First order sensitivity')
-    plt.savefig(f"./img/first_order_citizen.pdf")
-    plt.clf()
+    # # Total order
+    # plot_index(Si_police, problem['names'], 'T', 'Total order sensitivity')
+    # plt.savefig(f"./img/total_order_police.pdf")
+    # plt.clf()
 
-    # Second order
-    plot_index(Si_citizen, problem['names'], '2', 'Second order sensitivity')
-    plt.savefig(f"./img/second_order_citizen.pdf")
-    plt.clf()
+    # # First order
+    # plot_index(Si_citizen, problem['names'], '1', 'First order sensitivity')
+    # plt.savefig(f"./img/first_order_citizen.pdf")
+    # plt.clf()
 
-    # Total order
-    plot_index(Si_citizen, problem['names'], 'T', 'Total order sensitivity')
-    plt.savefig(f"./img/total_order_citizen.pdf")
-    plt.clf()
+    # # Second order
+    # plot_index(Si_citizen, problem['names'], '2', 'Second order sensitivity')
+    # plt.savefig(f"./img/second_order_citizen.pdf")
+    # plt.clf()
+
+    # # Total order
+    # plot_index(Si_citizen, problem['names'], 'T', 'Total order sensitivity')
+    # plt.savefig(f"./img/total_order_citizen.pdf")
+    # plt.clf()
 
 def get_10_90_percentiles(data):
     """
@@ -234,7 +318,6 @@ def plot():
     police agents, saving them as PDF files.
     """
     radii = np.linspace(0.1, 40 / 2, 50)
-    files = ["0002_data_0000_0.csv", "0002_data_0000_1.csv", "0002_data_0001_0.csv", "0002_data_0001_1.csv", "0002_data_0002.csv"]
     data = merge(files, load_base)
     d = data.groupby(["legitimacy","active_threshold","reversion_rate","prob_quiet"])
     base_citizen = []
