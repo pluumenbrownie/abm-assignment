@@ -12,6 +12,8 @@ mesa/examples/advanced/epstein_civil_violence
 
 Below are a few ways to run the model. For more ways of running mesa models, such as Docker containers, see the [mesa repository](https://github.com/projectmesa/mesa).
 
+NOTE: while most scripts work when run from the root of the repository, some may want to be run from their local directory.
+
 ## Conda
 
 Create a conda environment with the needed dependencies:
