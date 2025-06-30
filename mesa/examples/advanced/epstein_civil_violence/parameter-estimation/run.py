@@ -6,6 +6,7 @@ from SALib.util.results import ResultDict
 import matplotlib.pyplot as plt
 from itertools import combinations
 from matplotlib.legend_handler import HandlerTuple
+from scipy import stats
 
 files = ["0002_data_0000_0.csv", "0002_data_0000_1.csv", "0002_data_0001_0.csv", "0002_data_0001_1.csv", "0002_data_0002.csv"]
 
@@ -147,6 +148,10 @@ def plot_all_indices(analyses: dict[str, ResultDict], params, title=""):
 
     axes[2].legend()
     fig.suptitle(title)
+    fig.savefig(f"./img/global_sensitivity_analysis.pdf")
+    fig.clf()
+    plt.close(fig)
+    plt.clf()
 
 def plot_index(s, params, i, title=''):
     """
@@ -181,6 +186,12 @@ def plot_index(s, params, i, title=''):
     plt.errorbar(indices, range(l), xerr=errors, linestyle='None', marker='o')
     plt.axvline(0, c='k')
     plt.tight_layout()
+    plt.savefig(f"./img/global_sensitivity_analysis.pdf")
+    plt.clf()
+
+def plot_hist(arrest_hist, arrest_bins, ax, title):
+    ax.bar(arrest_bins[:-1], arrest_hist, width=arrest_bins[1] - arrest_bins[0])
+    ax.set_title(title)
 
 def SA():
     """ Perform a global sensitivity analysis using Sobol's method on the Epstein Civil Violence model.
@@ -201,37 +212,16 @@ def SA():
         problem["names"],
         "Global sensitivity analysis",
     )
-    plt.savefig(f"./img/global_sensitivity_analysis.pdf")
+
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3), layout="compressed")
+    plot_hist(*np.histogram(data["police"].values, bins=50), axes[0], "Police")
+    plot_hist(*np.histogram(data["citizen"].values, bins=50), axes[1], "Citizen")
+    fig.suptitle("Ripley's L-function histograms")
+    fig.savefig("./img/agent_histograms.pdf")
+    fig.clf()
+    plt.close(fig)
     plt.clf()
-    # # First order
-    # plot_index(Si_police, problem['names'], '1', 'First order sensitivity')
-    # plt.savefig(f"./img/first_order_police.pdf")
-    # plt.clf()
-
-    # # Second order
-    # plot_index(Si_police, problem['names'], '2', 'Second order sensitivity')
-    # plt.savefig(f"./img/second_order_police.pdf")
-    # plt.clf()
-
-    # # Total order
-    # plot_index(Si_police, problem['names'], 'T', 'Total order sensitivity')
-    # plt.savefig(f"./img/total_order_police.pdf")
-    # plt.clf()
-
-    # # First order
-    # plot_index(Si_citizen, problem['names'], '1', 'First order sensitivity')
-    # plt.savefig(f"./img/first_order_citizen.pdf")
-    # plt.clf()
-
-    # # Second order
-    # plot_index(Si_citizen, problem['names'], '2', 'Second order sensitivity')
-    # plt.savefig(f"./img/second_order_citizen.pdf")
-    # plt.clf()
-
-    # # Total order
-    # plot_index(Si_citizen, problem['names'], 'T', 'Total order sensitivity')
-    # plt.savefig(f"./img/total_order_citizen.pdf")
-    # plt.clf()
 
 def get_10_90_percentiles(data):
     """
@@ -350,4 +340,4 @@ def transpose(list_of_lists):
     return [list(x) for x in zip(*list_of_lists)]
 
 SA()
-plot()
+# plot()
